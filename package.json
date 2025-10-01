@@ -1,0 +1,15 @@
+{
+  "name": "zantra-invoicing",
+  "version": "1.0.0",
+  "description": "Invoicing utilities with DataManager and invoice calculations.",
+  "type": "module",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "29.7.0"
+  }
+}
