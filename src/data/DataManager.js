@@ -1,30 +1,31 @@
 const STORAGE_PREFIX = 'zantra-invoicing::';
 
+const resolveStorage = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage;
+  }
+  if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+    return globalThis.localStorage;
+  }
+  console.error('DataManager: localStorage is not available in this environment.');
+  return null;
+};
+
+const qualifyKey = (key) => {
+  if (typeof key !== 'string' || !key.trim()) {
+    throw new Error('DataManager: storage key must be a non-empty string.');
+  }
+  return `${STORAGE_PREFIX}${key.trim()}`;
+};
+
 export class DataManager {
-  static #getStorage() {
-    if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
-      return globalThis.localStorage;
-    }
-    console.error('DataManager: localStorage is not available in this environment.');
-    return null;
-  }
-
-  static #qualifyKey(key) {
-    if (typeof key !== 'string' || !key.trim()) {
-      throw new Error('DataManager: storage key must be a non-empty string.');
-    }
-    return `${STORAGE_PREFIX}${key.trim()}`;
-  }
-
   static save(key, data) {
     try {
-      const storage = DataManager.#getStorage();
+      const storage = resolveStorage();
       if (!storage) {
         return false;
       }
-      const qualifiedKey = DataManager.#qualifyKey(key);
-      const payload = JSON.stringify(data ?? null);
-      storage.setItem(qualifiedKey, payload);
+      storage.setItem(qualifyKey(key), JSON.stringify(data ?? null));
       return true;
     } catch (error) {
       console.error(`DataManager.save failed for key "${key}":`, error);
@@ -34,16 +35,12 @@ export class DataManager {
 
   static load(key) {
     try {
-      const storage = DataManager.#getStorage();
+      const storage = resolveStorage();
       if (!storage) {
         return null;
       }
-      const qualifiedKey = DataManager.#qualifyKey(key);
-      const raw = storage.getItem(qualifiedKey);
-      if (raw === null || raw === undefined) {
-        return null;
-      }
-      if (raw.trim() === '') {
+      const raw = storage.getItem(qualifyKey(key));
+      if (raw === null || raw === undefined || raw === '') {
         return null;
       }
       return JSON.parse(raw);
@@ -55,12 +52,11 @@ export class DataManager {
 
   static remove(key) {
     try {
-      const storage = DataManager.#getStorage();
+      const storage = resolveStorage();
       if (!storage) {
         return false;
       }
-      const qualifiedKey = DataManager.#qualifyKey(key);
-      storage.removeItem(qualifiedKey);
+      storage.removeItem(qualifyKey(key));
       return true;
     } catch (error) {
       console.error(`DataManager.remove failed for key "${key}":`, error);
@@ -70,7 +66,7 @@ export class DataManager {
 
   static clearAll() {
     try {
-      const storage = DataManager.#getStorage();
+      const storage = resolveStorage();
       if (!storage) {
         return false;
       }
