@@ -1,336 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Zantra Invoicing</title>
-    <link rel="stylesheet" href="styles.css" />
-    <link
-      rel="preconnect"
-      href="https://fonts.googleapis.com"
-    />
-    <link
-      rel="preconnect"
-      href="https://fonts.gstatic.com"
-      crossorigin
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-      integrity="sha512-3gJwYpH9sC7FQLmN0pX69teZUR0vbJIUKGwEuITdSb9VInA36TObgGJE0E7E5Wdl66iRS0LlwM651c01rbFG2g=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-      defer
-    ></script>
-    <script src="app.js" type="module" defer></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zantra Payments Tracker</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <script type="module" src="js/app.js" defer></script>
   </head>
   <body>
     <header class="app-header">
-      <h1>Zantra Invoicing Suite</h1>
-      <p>Generate invoices and quotes with GST support and client management.</p>
+      <div class="header-content">
+        <h1>Zantra Payments Tracker</h1>
+        <p class="tagline">Monitor invoices, payments, and GST in one workspace.</p>
+      </div>
     </header>
 
-    <main class="app-main">
-      <nav class="tab-nav" aria-label="Primary">
-        <button
-          class="tab-button is-active"
-          type="button"
-          data-target="invoice-module"
-          aria-controls="invoice-module"
-          aria-selected="true"
-          role="tab"
-        >
-          Invoice Module
-        </button>
-        <button
-          class="tab-button"
-          type="button"
-          data-target="quote-module"
-          aria-controls="quote-module"
-          aria-selected="false"
-          role="tab"
-        >
-          Quote Module
-        </button>
-      </nav>
-
-      <section
-        id="invoice-module"
-        class="tab-panel"
-        role="tabpanel"
-        aria-labelledby="invoice-module"
-      >
-        <h2>Invoice Builder</h2>
-        <form id="invoice-form" novalidate>
-          <div class="grid">
-            <label class="field">
-              <span>Invoice Number</span>
-              <input type="text" id="invoice-number" required aria-required="true" />
-            </label>
-            <label class="field">
-              <span>Issue Date</span>
-              <input type="date" id="invoice-issue-date" required aria-required="true" />
-            </label>
-            <label class="field">
-              <span>Due Terms</span>
-              <select id="invoice-due-terms" aria-label="Invoice due date terms">
-                <option value="on_receipt">On Receipt</option>
-                <option value="7">7 Days</option>
-                <option value="14">14 Days</option>
-                <option value="30">30 Days</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            <label class="field" id="invoice-due-date-wrapper">
-              <span>Due Date</span>
-              <input type="date" id="invoice-due-date" aria-describedby="invoice-due-helper" />
-              <small id="invoice-due-helper">Automatically calculated unless custom.</small>
-            </label>
+    <main class="layout">
+      <section class="panel" aria-labelledby="invoice-form-heading">
+        <div class="panel-header">
+          <h2 id="invoice-form-heading">Create Invoice</h2>
+          <p>Capture new invoices with GST-aware totals and due dates.</p>
+        </div>
+        <form id="invoice-form" class="form-grid" novalidate>
+          <div class="form-field">
+            <label for="invoice-number">Invoice Number</label>
+            <input id="invoice-number" name="invoiceNumber" type="text" required aria-required="true" />
           </div>
-
-          <div class="field">
-            <span>Client</span>
-            <div class="client-selector">
-              <select id="invoice-client-select" aria-label="Select client for invoice">
-                <option value="">Select client</option>
-              </select>
-              <button type="button" class="secondary" id="invoice-add-client">Add New Client</button>
-            </div>
-            <div
-              class="client-details"
-              id="invoice-client-details"
-              role="note"
-              aria-live="polite"
-            ></div>
+          <div class="form-field">
+            <label for="client-name">Client</label>
+            <input id="client-name" name="clientName" type="text" required aria-required="true" />
           </div>
-
-          <div class="client-form" id="invoice-client-form" hidden>
-            <h3>New Client</h3>
-            <div class="grid">
-              <label class="field">
-                <span>Company Name</span>
-                <input type="text" id="invoice-client-name" />
-              </label>
-              <label class="field">
-                <span>Contact Email</span>
-                <input type="email" id="invoice-client-email" />
-              </label>
-              <label class="field">
-                <span>Phone</span>
-                <input type="tel" id="invoice-client-phone" />
-              </label>
-              <label class="field">
-                <span>Address</span>
-                <textarea id="invoice-client-address" rows="3"></textarea>
-              </label>
-            </div>
-            <div class="button-row">
-              <button type="button" class="primary" id="invoice-save-client">Save Client</button>
-              <button type="button" class="secondary" id="invoice-cancel-client">Cancel</button>
-            </div>
+          <div class="form-field">
+            <label for="issue-date">Issue Date</label>
+            <input id="issue-date" name="issueDate" type="date" required aria-required="true" />
           </div>
-
-          <div class="line-items" aria-live="polite">
-            <div class="line-item-header">
-              <h3>Line Items</h3>
-              <button type="button" class="primary" id="invoice-add-item">Add Line Item</button>
-            </div>
-            <div class="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Description</th>
-                    <th scope="col">Quantity</th>
-                    <th scope="col">Unit Price</th>
-                    <th scope="col">GST</th>
-                    <th scope="col">Line Total</th>
-                    <th scope="col" class="sr-only">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="invoice-items"></tbody>
-              </table>
-            </div>
+          <div class="form-field">
+            <label for="due-date">Due Date</label>
+            <input id="due-date" name="dueDate" type="date" required aria-required="true" />
           </div>
-
-          <aside class="totals" aria-live="polite">
-            <div class="totals-row">
-              <span>Subtotal</span>
-              <span id="invoice-subtotal" data-currency>$0.00</span>
-            </div>
-            <div class="totals-row">
-              <span>GST (10%)</span>
-              <span id="invoice-gst" data-currency>$0.00</span>
-            </div>
-            <div class="totals-row grand-total">
-              <span>Total Due</span>
-              <span id="invoice-total" data-currency>$0.00</span>
-            </div>
-          </aside>
-
-          <div class="button-row">
-            <button type="submit" class="primary">Save Invoice</button>
-            <button type="button" class="secondary" id="invoice-export">Export PDF</button>
+          <div class="form-field">
+            <label for="invoice-amount">Amount (excl. GST)</label>
+            <input id="invoice-amount" name="amount" type="number" min="0" step="0.01" required aria-required="true" />
+          </div>
+          <div class="form-field">
+            <label for="gst-rate">GST Rate (%)</label>
+            <input id="gst-rate" name="gstRate" type="number" min="0" step="0.01" value="10" required aria-required="true" />
+          </div>
+          <div class="form-field form-field--span">
+            <label for="invoice-notes">Notes</label>
+            <textarea id="invoice-notes" name="notes" rows="2" placeholder="Internal notes or payment instructions"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Invoice</button>
+            <button type="reset" class="btn btn-secondary">Reset</button>
           </div>
         </form>
-
-        <section aria-labelledby="invoice-list-heading" class="records">
-          <h3 id="invoice-list-heading">Saved Invoices</h3>
-          <ul id="invoice-list" class="record-list" aria-live="polite"></ul>
-        </section>
+        <p id="form-feedback" class="form-feedback" role="status" aria-live="polite"></p>
       </section>
 
-      <section
-        id="quote-module"
-        class="tab-panel is-hidden"
-        role="tabpanel"
-        aria-labelledby="quote-module"
-        hidden
-      >
-        <h2>Quote Builder</h2>
-        <form id="quote-form" novalidate>
-          <div class="grid">
-            <label class="field">
-              <span>Quote Number</span>
-              <input type="text" id="quote-number" required aria-required="true" />
-            </label>
-            <label class="field">
-              <span>Quote Date</span>
-              <input type="date" id="quote-date" required aria-required="true" />
-            </label>
-            <label class="field">
-              <span>Valid Until</span>
-              <select id="quote-valid-terms" aria-label="Quote validity terms">
-                <option value="7">7 Days</option>
-                <option value="14">14 Days</option>
-                <option value="30">30 Days</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            <label class="field" id="quote-valid-date-wrapper">
-              <span>Expiry Date</span>
-              <input type="date" id="quote-valid-date" aria-describedby="quote-valid-helper" />
-              <small id="quote-valid-helper">Automatically calculated unless custom.</small>
-            </label>
-          </div>
+      <section class="panel" aria-labelledby="invoice-list-heading">
+        <div class="panel-header">
+          <h2 id="invoice-list-heading">Invoices</h2>
+          <p>Update payment progress and keep statuses accurate.</p>
+        </div>
+        <div class="table-container" role="region" aria-live="polite">
+          <table class="data-table" aria-describedby="invoice-list-heading">
+            <thead>
+              <tr>
+                <th scope="col">Invoice</th>
+                <th scope="col">Client</th>
+                <th scope="col">Issued</th>
+                <th scope="col">Due</th>
+                <th scope="col" class="numeric">Amount</th>
+                <th scope="col" class="numeric">GST</th>
+                <th scope="col" class="numeric">Paid</th>
+                <th scope="col" class="numeric">Outstanding</th>
+                <th scope="col">Status</th>
+                <th scope="col">Payment Date</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoice-table-body">
+              <tr>
+                <td colspan="11" class="empty-state">No invoices captured yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-          <div class="field">
-            <span>Client</span>
-            <div class="client-selector">
-              <select id="quote-client-select" aria-label="Select client for quote">
-                <option value="">Select client</option>
-              </select>
-              <button type="button" class="secondary" id="quote-add-client">Add New Client</button>
+      <section class="panel" aria-labelledby="reports-heading">
+        <div class="panel-header">
+          <h2 id="reports-heading">Reports</h2>
+          <p>Surface outstanding balances, monthly performance, and GST exposure.</p>
+        </div>
+        <div class="reports-grid">
+          <article class="report-card" aria-labelledby="outstanding-heading">
+            <header>
+              <h3 id="outstanding-heading">Outstanding Invoices</h3>
+              <p class="report-subtitle">Focus on invoices that still need attention.</p>
+            </header>
+            <div id="outstanding-container" class="report-content">
+              <p class="empty-state">All caught up! No outstanding invoices.</p>
             </div>
-            <div
-              class="client-details"
-              id="quote-client-details"
-              role="note"
-              aria-live="polite"
-            ></div>
-          </div>
+          </article>
 
-          <div class="client-form" id="quote-client-form" hidden>
-            <h3>New Client</h3>
-            <div class="grid">
-              <label class="field">
-                <span>Company Name</span>
-                <input type="text" id="quote-client-name" />
-              </label>
-              <label class="field">
-                <span>Contact Email</span>
-                <input type="email" id="quote-client-email" />
-              </label>
-              <label class="field">
-                <span>Phone</span>
-                <input type="tel" id="quote-client-phone" />
-              </label>
-              <label class="field">
-                <span>Address</span>
-                <textarea id="quote-client-address" rows="3"></textarea>
-              </label>
+          <article class="report-card" aria-labelledby="paid-monthly-heading">
+            <header>
+              <h3 id="paid-monthly-heading">Paid Totals by Month</h3>
+              <p class="report-subtitle">Track realised revenue trends.</p>
+            </header>
+            <div class="report-content">
+              <canvas id="paid-monthly-chart" role="img" aria-label="Line chart of paid totals by month"></canvas>
+              <p class="empty-state" id="paid-monthly-empty">No payments recorded yet.</p>
             </div>
-            <div class="button-row">
-              <button type="button" class="primary" id="quote-save-client">Save Client</button>
-              <button type="button" class="secondary" id="quote-cancel-client">Cancel</button>
-            </div>
-          </div>
+          </article>
 
-          <div class="line-items" aria-live="polite">
-            <div class="line-item-header">
-              <h3>Line Items</h3>
-              <button type="button" class="primary" id="quote-add-item">Add Line Item</button>
+          <article class="report-card" aria-labelledby="gst-summary-heading">
+            <header>
+              <h3 id="gst-summary-heading">GST Summary</h3>
+              <p class="report-subtitle">Compare GST collected vs. outstanding.</p>
+            </header>
+            <div class="report-content">
+              <canvas id="gst-summary-chart" role="img" aria-label="Pie chart of GST summary"></canvas>
+              <dl class="gst-breakdown" id="gst-breakdown"></dl>
+              <p class="empty-state" id="gst-summary-empty">Add invoices to see GST exposure.</p>
             </div>
-            <div class="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Description</th>
-                    <th scope="col">Quantity</th>
-                    <th scope="col">Unit Price</th>
-                    <th scope="col">GST</th>
-                    <th scope="col">Line Total</th>
-                    <th scope="col" class="sr-only">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="quote-items"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <aside class="totals" aria-live="polite">
-            <div class="totals-row">
-              <span>Subtotal</span>
-              <span id="quote-subtotal" data-currency>$0.00</span>
-            </div>
-            <div class="totals-row">
-              <span>GST (10%)</span>
-              <span id="quote-gst" data-currency>$0.00</span>
-            </div>
-            <div class="totals-row grand-total">
-              <span>Total</span>
-              <span id="quote-total" data-currency>$0.00</span>
-            </div>
-          </aside>
-
-          <div class="button-row">
-            <button type="submit" class="primary">Save Quote</button>
-            <button type="button" class="secondary" id="quote-export">Export PDF</button>
-          </div>
-        </form>
-
-        <section aria-labelledby="quote-list-heading" class="records">
-          <h3 id="quote-list-heading">Saved Quotes</h3>
-          <ul id="quote-list" class="record-list" aria-live="polite"></ul>
-        </section>
+          </article>
+        </div>
       </section>
     </main>
 
-    <template id="line-item-template">
-      <tr>
-        <td data-label="Description">
-          <input type="text" class="line-description" placeholder="Item description" />
-        </td>
-        <td data-label="Quantity">
-          <input type="number" class="line-quantity" min="0" step="1" value="1" />
-        </td>
-        <td data-label="Unit Price">
-          <input type="number" class="line-price" min="0" step="0.01" value="0.00" />
-        </td>
-        <td data-label="GST">
-          <label class="switch">
-            <input type="checkbox" class="line-gst" checked />
-            <span class="slider" aria-hidden="true"></span>
-            <span class="sr-only">Apply GST</span>
-          </label>
-        </td>
-        <td data-label="Line Total" class="line-total" data-currency>$0.00</td>
-        <td data-label="Actions">
-          <button type="button" class="icon-button remove-item" aria-label="Remove line item">&times;</button>
-        </td>
-      </tr>
-    </template>
+    <footer class="app-footer">
+      <p>&copy; <span id="current-year"></span> Zantra Finance Tools</p>
+    </footer>
+
   </body>
 </html>
