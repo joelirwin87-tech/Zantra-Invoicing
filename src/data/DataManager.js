@@ -1,100 +1,91 @@
-import { promises as fs } from 'fs';
-import { dirname, resolve } from 'path';
-
-const DEFAULT_ENCODING = 'utf-8';
+const STORAGE_PREFIX = 'zantra-invoicing::';
 
 export class DataManager {
-  constructor(filePath) {
-    if (!filePath || typeof filePath !== 'string') {
-      throw new Error('DataManager requires a valid file path.');
+  static #getStorage() {
+    if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+      return globalThis.localStorage;
     }
-
-    this.filePath = resolve(filePath);
-    this.data = null;
-    this.initialized = false;
+    console.error('DataManager: localStorage is not available in this environment.');
+    return null;
   }
 
-  async ensureInitialized() {
-    if (this.initialized) {
-      return;
+  static #qualifyKey(key) {
+    if (typeof key !== 'string' || !key.trim()) {
+      throw new Error('DataManager: storage key must be a non-empty string.');
     }
-
-    await this.ensureDirectory();
-    await this.ensureFile();
-    this.initialized = true;
+    return `${STORAGE_PREFIX}${key.trim()}`;
   }
 
-  async ensureDirectory() {
-    const directory = dirname(this.filePath);
-    await fs.mkdir(directory, { recursive: true });
-  }
-
-  async ensureFile() {
+  static save(key, data) {
     try {
-      await fs.access(this.filePath);
-    } catch (error) {
-      await fs.writeFile(this.filePath, '{}', DEFAULT_ENCODING);
-    }
-  }
-
-  async loadData() {
-    await this.ensureInitialized();
-    if (this.data) {
-      return this.data;
-    }
-
-    const raw = await fs.readFile(this.filePath, DEFAULT_ENCODING);
-    if (!raw.trim()) {
-      this.data = {};
-      return this.data;
-    }
-
-    try {
-      const parsed = JSON.parse(raw);
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('Data file must contain a JSON object.');
+      const storage = DataManager.#getStorage();
+      if (!storage) {
+        return false;
       }
-      this.data = parsed;
-      return this.data;
+      const qualifiedKey = DataManager.#qualifyKey(key);
+      const payload = JSON.stringify(data ?? null);
+      storage.setItem(qualifiedKey, payload);
+      return true;
     } catch (error) {
-      throw new Error(`Failed to parse data file: ${error.message}`);
+      console.error(`DataManager.save failed for key "${key}":`, error);
+      return false;
     }
   }
 
-  async getCollection(collectionName) {
-    if (!collectionName) {
-      throw new Error('Collection name is required.');
+  static load(key) {
+    try {
+      const storage = DataManager.#getStorage();
+      if (!storage) {
+        return null;
+      }
+      const qualifiedKey = DataManager.#qualifyKey(key);
+      const raw = storage.getItem(qualifiedKey);
+      if (raw === null || raw === undefined) {
+        return null;
+      }
+      if (raw.trim() === '') {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch (error) {
+      console.error(`DataManager.load failed for key "${key}":`, error);
+      return null;
     }
-    const data = await this.loadData();
-    if (!Array.isArray(data[collectionName])) {
-      data[collectionName] = [];
-    }
-    return data[collectionName].map((item) => this.clone(item));
   }
 
-  async saveCollection(collectionName, items) {
-    if (!collectionName) {
-      throw new Error('Collection name is required.');
+  static remove(key) {
+    try {
+      const storage = DataManager.#getStorage();
+      if (!storage) {
+        return false;
+      }
+      const qualifiedKey = DataManager.#qualifyKey(key);
+      storage.removeItem(qualifiedKey);
+      return true;
+    } catch (error) {
+      console.error(`DataManager.remove failed for key "${key}":`, error);
+      return false;
     }
-    if (!Array.isArray(items)) {
-      throw new Error('Collection items must be an array.');
-    }
-    const data = await this.loadData();
-    data[collectionName] = items.map((item) => this.clone(item));
-    await this.persist(data);
-    return data[collectionName].map((item) => this.clone(item));
   }
 
-  async persist(updatedData) {
-    await this.ensureInitialized();
-    const serialized = JSON.stringify(updatedData, null, 2);
-    const tempPath = `${this.filePath}.tmp`;
-    await fs.writeFile(tempPath, serialized, DEFAULT_ENCODING);
-    await fs.rename(tempPath, this.filePath);
-    this.data = this.clone(updatedData);
-  }
-
-  clone(value) {
-    return JSON.parse(JSON.stringify(value));
+  static clearAll() {
+    try {
+      const storage = DataManager.#getStorage();
+      if (!storage) {
+        return false;
+      }
+      const keysToRemove = [];
+      for (let index = 0; index < storage.length; index += 1) {
+        const storedKey = storage.key(index);
+        if (storedKey && storedKey.startsWith(STORAGE_PREFIX)) {
+          keysToRemove.push(storedKey);
+        }
+      }
+      keysToRemove.forEach((qualifiedKey) => storage.removeItem(qualifiedKey));
+      return true;
+    } catch (error) {
+      console.error('DataManager.clearAll failed:', error);
+      return false;
+    }
   }
 }
