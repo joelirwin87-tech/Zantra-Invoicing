@@ -1,1154 +1,560 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Zantra Invoicing Dashboard</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #f6f8fb;
-        --card-bg: #ffffff;
-        --primary: #2563eb;
-        --primary-dark: #1e3a8a;
-        --text: #1f2933;
-        --muted: #6b7280;
-        --border: #d1d5db;
-        font-family: "Segoe UI", Roboto, sans-serif;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        min-height: 100vh;
-      }
-
-      header {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: white;
-        padding: 1.5rem 2rem;
-      }
-
-      header h1 {
-        margin: 0;
-        font-size: 1.75rem;
-      }
-
-      main {
-        padding: 2rem;
-        display: grid;
-        gap: 1.5rem;
-      }
-
-      @media (min-width: 1080px) {
-        main {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      section {
-        background: var(--card-bg);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-        border: 1px solid var(--border);
-      }
-
-      h2 {
-        margin-top: 0;
-        font-size: 1.25rem;
-      }
-
-      form {
-        display: grid;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-      }
-
-      fieldset {
-        border: none;
-        padding: 0;
-        margin: 0;
-        display: grid;
-        gap: 1rem;
-      }
-
-      label {
-        display: grid;
-        gap: 0.35rem;
-        font-weight: 600;
-      }
-
-      input,
-      select,
-      textarea {
-        padding: 0.65rem 0.75rem;
-        border-radius: 0.75rem;
-        border: 1px solid var(--border);
-        font-size: 1rem;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      }
-
-      input:focus,
-      select:focus,
-      textarea:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-      }
-
-      button {
-        border: none;
-        border-radius: 999px;
-        padding: 0.75rem 1.5rem;
-        background: var(--primary);
-        color: white;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        justify-self: start;
-      }
-
-      button:hover,
-      button:focus-visible {
-        transform: translateY(-1px);
-        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.95rem;
-      }
-
-      th,
-      td {
-        padding: 0.75rem;
-        text-align: left;
-        border-bottom: 1px solid var(--border);
-      }
-
-      th {
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--muted);
-      }
-
-      tbody tr:hover {
-        background: rgba(37, 99, 235, 0.08);
-      }
-
-      .muted {
-        color: var(--muted);
-      }
-
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.2rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 600;
-      }
-
-      .badge.success {
-        background: rgba(16, 185, 129, 0.18);
-        color: #047857;
-      }
-
-      .badge.warning {
-        background: rgba(234, 179, 8, 0.18);
-        color: #92400e;
-      }
-
-      .badge.danger {
-        background: rgba(248, 113, 113, 0.2);
-        color: #991b1b;
-      }
-
-      .grid-2 {
-        display: grid;
-        gap: 1rem;
-      }
-
-      @media (min-width: 720px) {
-        .grid-2 {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      .empty-state {
-        padding: 1rem;
-        border-radius: 0.75rem;
-        background: rgba(148, 163, 184, 0.15);
-        color: var(--muted);
-        text-align: center;
-        font-style: italic;
-      }
-
-      .totals-grid {
-        display: grid;
-        gap: 1rem;
-      }
-
-      @media (min-width: 600px) {
-        .totals-grid {
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        }
-      }
-
-      .metric {
-        background: rgba(37, 99, 235, 0.08);
-        padding: 1rem;
-        border-radius: 0.75rem;
-      }
-
-      .metric dt {
-        font-size: 0.85rem;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .metric dd {
-        margin: 0;
-        font-size: 1.35rem;
-        font-weight: 700;
-      }
-
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        border: 0;
-      }
-
-      .error {
-        color: #b91c1c;
-        font-size: 0.85rem;
-      }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zantra Invoicing – Trade Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles/main.css" />
   </head>
   <body>
-    <header>
-      <h1>Zantra Invoicing Control Center</h1>
-      <p class="sr-only">
-        Manage clients, invoices, payments, and reports from a single unified
-        dashboard.
-      </p>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand__icon" aria-hidden="true">🔧</span>
+        <div>
+          <p class="brand__title">Zantra Invoicing</p>
+          <p class="brand__subtitle">Trade Operations Console</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn--ghost" id="open-wizard" type="button">
+          <span aria-hidden="true">🎯</span>
+          <span>Resume setup</span>
+        </button>
+        <button class="btn" type="button">
+          <span aria-hidden="true">➕</span>
+          <span>New invoice</span>
+        </button>
+      </div>
     </header>
-    <main>
-      <section aria-labelledby="clients-heading">
-        <h2 id="clients-heading">Clients</h2>
-        <form id="client-form" novalidate>
-          <fieldset>
-            <legend class="sr-only">Client information</legend>
-            <label for="client-name"
-              >Name
-              <input
-                id="client-name"
-                name="name"
-                type="text"
-                placeholder="Acme Corp"
-                autocomplete="organization"
-                required
-                aria-required="true"
-              />
-            </label>
-            <label for="client-email"
-              >Email
-              <input
-                id="client-email"
-                name="email"
-                type="email"
-                placeholder="billing@acme.com"
-                autocomplete="email"
-                required
-                aria-required="true"
-              />
-            </label>
-            <label for="client-phone"
-              >Phone
-              <input
-                id="client-phone"
-                name="phone"
-                type="tel"
-                placeholder="+1 555 000 0000"
-                pattern="^[+0-9()\s-]{7,}$"
-                aria-describedby="client-phone-help"
-              />
-              <span id="client-phone-help" class="muted"
-                >Include country code if international.</span
-              >
-            </label>
-            <div id="client-form-error" class="error" role="alert"></div>
-            <button type="submit">Save Client</button>
-          </fieldset>
-        </form>
-        <div id="client-list" role="region" aria-live="polite"></div>
+
+    <nav class="primary-nav" aria-label="Primary navigation">
+      <div role="tablist" aria-label="Application sections" class="tablist">
+        <button role="tab" aria-selected="true" aria-controls="panel-dashboard" id="tab-dashboard">
+          Dashboard
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-invoices" id="tab-invoices">
+          Invoices
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-quotes" id="tab-quotes">
+          Quotes
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-clients" id="tab-clients">
+          Clients
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-services" id="tab-services">
+          Services
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-payments" id="tab-payments">
+          Payments
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-reports" id="tab-reports">
+          Reports
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-settings" id="tab-settings">
+          Settings
+        </button>
+      </div>
+    </nav>
+
+    <main class="layout">
+      <section
+        id="panel-dashboard"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-dashboard"
+        class="panel is-active"
+      >
+        <header class="panel__header">
+          <h1>Dashboard</h1>
+          <p>Real-time overview of all trade and invoicing activity.</p>
+        </header>
+        <div class="content-grid">
+          <article class="card accent">
+            <h2>Open Jobs</h2>
+            <p class="card__metric">14</p>
+            <p>Active service calls scheduled for this week.</p>
+          </article>
+          <article class="card">
+            <h2>Invoices Due</h2>
+            <p class="card__metric">$18,450</p>
+            <p>Across 9 invoices awaiting payment.</p>
+          </article>
+          <article class="card">
+            <h2>Quote Approval Rate</h2>
+            <p class="card__metric">72%</p>
+            <p>Quotes accepted over the last 30 days.</p>
+          </article>
+          <article class="card">
+            <h2>Average Payment Time</h2>
+            <p class="card__metric">18 days</p>
+            <p>Median days from invoice issued to payment received.</p>
+          </article>
+        </div>
+        <div class="content-grid content-grid--two">
+          <article class="card stretch">
+            <h2>Upcoming Appointments</h2>
+            <ul class="timeline" aria-label="Upcoming appointments">
+              <li>
+                <p class="timeline__title">Site inspection – Skyline Plaza</p>
+                <p class="timeline__meta">Tomorrow · Assigned to A. Patel</p>
+              </li>
+              <li>
+                <p class="timeline__title">HVAC maintenance – Harbor Mall</p>
+                <p class="timeline__meta">Thu, 10:00 · Assigned to C. Rivera</p>
+              </li>
+              <li>
+                <p class="timeline__title">Lighting upgrade – West Yard</p>
+                <p class="timeline__meta">Fri, 14:30 · Assigned to S. Chen</p>
+              </li>
+            </ul>
+          </article>
+          <article class="card stretch">
+            <h2>Material Reorders</h2>
+            <div class="list">
+              <div>
+                <p class="list__title">Copper piping 3"</p>
+                <p class="list__meta">Stock: 6 · Recommended reorder</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Reorder</button>
+            </div>
+            <div class="list">
+              <div>
+                <p class="list__title">Industrial sealant</p>
+                <p class="list__meta">Stock: 12 · Target: 20</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Reorder</button>
+            </div>
+            <div class="list">
+              <div>
+                <p class="list__title">Galvanized bolts M12</p>
+                <p class="list__meta">Stock: 150 · Stable</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Adjust</button>
+            </div>
+          </article>
+        </div>
       </section>
 
-      <section aria-labelledby="invoices-heading">
-        <h2 id="invoices-heading">Invoices</h2>
-        <form id="invoice-form" novalidate>
-          <fieldset>
-            <legend class="sr-only">Invoice details</legend>
-            <label for="invoice-client"
-              >Client
-              <select id="invoice-client" name="clientId" required>
-                <option value="" disabled selected>Select client</option>
-              </select>
-            </label>
-            <div class="grid-2">
-              <label for="invoice-number"
-                >Invoice #
-                <input
-                  id="invoice-number"
-                  name="number"
-                  type="text"
-                  placeholder="INV-2024-001"
-                  required
-                />
-              </label>
-              <label for="invoice-amount"
-                >Amount
-                <input
-                  id="invoice-amount"
-                  name="amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="1200.00"
-                  required
-                />
-              </label>
-            </div>
-            <div class="grid-2">
-              <label for="invoice-issue-date"
-                >Issue Date
-                <input id="invoice-issue-date" name="issueDate" type="date" required />
-              </label>
-              <label for="invoice-due-date"
-                >Due Date
-                <input id="invoice-due-date" name="dueDate" type="date" required />
-              </label>
-            </div>
-            <label for="invoice-notes"
-              >Notes
-              <textarea
-                id="invoice-notes"
-                name="notes"
-                rows="2"
-                placeholder="Optional notes for the client"
-              ></textarea>
-            </label>
-            <div id="invoice-form-error" class="error" role="alert"></div>
-            <button type="submit">Create Invoice</button>
-          </fieldset>
-        </form>
-        <div id="invoice-list" role="region" aria-live="polite"></div>
+      <section
+        id="panel-invoices"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-invoices"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Invoices</h1>
+          <p>Track issued invoices, statuses, and collections.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Create invoice</button>
+            <button class="btn btn--ghost" type="button">Export CSV</button>
+          </div>
+        </header>
+        <div class="table-wrapper" role="region" aria-live="polite">
+          <table>
+            <caption class="sr-only">Invoice overview</caption>
+
+            <thead>
+              <tr>
+                <th scope="col">Invoice</th>
+                <th scope="col">Client</th>
+                <th scope="col">Issued</th>
+                <th scope="col">Due</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>#INV-2048</td>
+                <td>Northline Logistics</td>
+                <td>Apr 4</td>
+                <td>Apr 18</td>
+                <td>$4,980</td>
+                <td><span class="status status--warning">Due soon</span></td>
+              </tr>
+              <tr>
+                <td>#INV-2047</td>
+                <td>Metro Builders</td>
+                <td>Apr 2</td>
+                <td>Apr 16</td>
+                <td>$7,450</td>
+                <td><span class="status status--danger">Overdue</span></td>
+              </tr>
+              <tr>
+                <td>#INV-2046</td>
+                <td>Summit Hospitality</td>
+                <td>Mar 30</td>
+                <td>Apr 13</td>
+                <td>$2,130</td>
+                <td><span class="status status--success">Paid</span></td>
+              </tr>
+              <tr>
+                <td>#INV-2045</td>
+                <td>Brightline Energy</td>
+                <td>Mar 28</td>
+                <td>Apr 11</td>
+                <td>$3,780</td>
+                <td><span class="status status--info">Partial</span></td>
+
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <section aria-labelledby="payments-heading">
-        <h2 id="payments-heading">Payments</h2>
-        <form id="payment-form" novalidate>
-          <fieldset>
-            <legend class="sr-only">Payment details</legend>
-            <label for="payment-invoice"
-              >Invoice
-              <select id="payment-invoice" name="invoiceId" required>
-                <option value="" disabled selected>Select invoice</option>
-              </select>
-            </label>
-            <div class="grid-2">
-              <label for="payment-amount"
-                >Amount
-                <input
-                  id="payment-amount"
-                  name="amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="400.00"
-                  required
-                />
-              </label>
-              <label for="payment-date"
-                >Date
-                <input id="payment-date" name="date" type="date" required />
-              </label>
+      <section
+        id="panel-quotes"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-quotes"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Quotes</h1>
+          <p>Send professional estimates and convert approvals into jobs.</p>
+        </header>
+        <div class="content-grid content-grid--two">
+          <article class="card stretch">
+            <h2>Drafts</h2>
+            <ul class="timeline">
+              <li>
+                <p class="timeline__title">Retrofit – Greenline Apartments</p>
+                <p class="timeline__meta">Edited 2h ago · $9,850</p>
+              </li>
+              <li>
+                <p class="timeline__title">Emergency generator install</p>
+                <p class="timeline__meta">Edited 1d ago · $15,600</p>
+              </li>
+            </ul>
+          </article>
+          <article class="card stretch">
+            <h2>Approvals waiting</h2>
+            <div class="list">
+              <div>
+                <p class="list__title">Signal Tower – Service Contract</p>
+                <p class="list__meta">Sent Apr 2 · Follow up in 2 days</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Nudge</button>
             </div>
-            <label for="payment-method"
-              >Method
-              <input
-                id="payment-method"
-                name="method"
-                type="text"
-                placeholder="Wire Transfer"
-                required
-              />
-            </label>
-            <div id="payment-form-error" class="error" role="alert"></div>
-            <button type="submit">Record Payment</button>
-          </fieldset>
-        </form>
-        <div id="payment-list" role="region" aria-live="polite"></div>
+            <div class="list">
+              <div>
+                <p class="list__title">Warehouse expansion cabling</p>
+                <p class="list__meta">Sent Mar 31 · Negotiating terms</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Update</button>
+            </div>
+          </article>
+        </div>
       </section>
 
-      <section aria-labelledby="reports-heading">
-        <h2 id="reports-heading">Reports</h2>
-        <div id="reports-summary"></div>
+      <section
+        id="panel-clients"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-clients"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Clients</h1>
+          <p>Manage contact details, account status, and project history.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Add client</button>
+            <button class="btn btn--ghost" type="button">Import</button>
+          </div>
+        </header>
+        <div class="card card--split">
+          <form class="form" aria-label="Client filters">
+            <label for="client-search">Search clients</label>
+            <input id="client-search" type="search" name="client-search" placeholder="Enter client or project" />
+            <label for="client-segment">Segment</label>
+            <select id="client-segment" name="client-segment">
+              <option>All clients</option>
+              <option>Commercial</option>
+              <option>Residential</option>
+              <option>Maintenance contracts</option>
+            </select>
+            <label class="checkbox">
+              <input type="checkbox" name="client-active" checked />
+              <span>Show active projects only</span>
+            </label>
+          </form>
+          <div class="client-list" role="region" aria-live="polite">
+            <article>
+              <h3>Metro Builders</h3>
+              <p>Main contact: Jordan Lee · +1 (415) 555-2749</p>
+              <p class="client-status client-status--primary">Priority partner</p>
+            </article>
+            <article>
+              <h3>Northline Logistics</h3>
+              <p>Main contact: Ava Morgan · +1 (312) 555-4821</p>
+              <p class="client-status">Standard</p>
+            </article>
+            <article>
+              <h3>Summit Hospitality</h3>
+              <p>Main contact: Mateo Garcia · +1 (206) 555-9931</p>
+              <p class="client-status client-status--warning">Credit hold</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="panel-services"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-services"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Services</h1>
+          <p>Standardize the work you deliver and automate pricing.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Add service</button>
+            <button class="btn btn--ghost" type="button">Bulk update</button>
+          </div>
+        </header>
+        <div class="content-grid content-grid--two">
+          <article class="card">
+            <h2>Service catalogue</h2>
+            <ul class="timeline">
+              <li>
+                <p class="timeline__title">Preventive maintenance visit</p>
+                <p class="timeline__meta">Standard rate · 4h labor</p>
+              </li>
+              <li>
+                <p class="timeline__title">Emergency call-out</p>
+                <p class="timeline__meta">After-hours surcharge applied</p>
+              </li>
+              <li>
+                <p class="timeline__title">Design & consultancy</p>
+                <p class="timeline__meta">Custom quoting workflow</p>
+              </li>
+            </ul>
+          </article>
+          <article class="card">
+            <h2>Bundles</h2>
+            <div class="list">
+              <div>
+                <p class="list__title">Seasonal maintenance bundle</p>
+                <p class="list__meta">20% discount · Includes filter kits</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Edit</button>
+            </div>
+            <div class="list">
+              <div>
+                <p class="list__title">Premium install package</p>
+                <p class="list__meta">Extended warranty & training</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Edit</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section
+        id="panel-payments"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-payments"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Payments</h1>
+          <p>Monitor transaction health and streamline collections.</p>
+        </header>
+        <div class="content-grid">
+          <article class="card">
+            <h2>Collected this month</h2>
+            <p class="card__metric">$42,210</p>
+            <p>Up 18% compared with March.</p>
+          </article>
+          <article class="card">
+            <h2>Disputes</h2>
+            <p class="card__metric">2</p>
+            <p>Both awaiting client documentation.</p>
+          </article>
+          <article class="card">
+            <h2>Payout schedule</h2>
+            <p class="card__metric">Every Friday</p>
+            <p>Next payout arrives Apr 12.</p>
+          </article>
+        </div>
+        <div class="table-wrapper" role="region" aria-live="polite">
+          <table>
+            <caption class="sr-only">Recent payments</caption>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Client</th>
+                <th scope="col">Invoice</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Method</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Apr 8</td>
+                <td>Northline Logistics</td>
+                <td>#INV-2039</td>
+                <td>$6,950</td>
+                <td>ACH</td>
+                <td><span class="status status--success">Cleared</span></td>
+              </tr>
+              <tr>
+                <td>Apr 7</td>
+                <td>Metro Builders</td>
+                <td>#INV-2034</td>
+                <td>$3,120</td>
+                <td>Card</td>
+                <td><span class="status status--info">Processing</span></td>
+              </tr>
+              <tr>
+                <td>Apr 6</td>
+                <td>Summit Hospitality</td>
+                <td>#INV-2028</td>
+                <td>$1,460</td>
+                <td>Card</td>
+                <td><span class="status status--danger">Failed</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section
+        id="panel-reports"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-reports"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Reports</h1>
+          <p>Generate insights to drive your trade operations.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Build report</button>
+            <button class="btn btn--ghost" type="button">Schedule</button>
+          </div>
+        </header>
+        <div class="card card--split">
+          <section aria-label="Report templates" class="report-list">
+            <article>
+              <h3>Revenue by service</h3>
+              <p>Break down earnings per service line, month over month.</p>
+            </article>
+            <article>
+              <h3>Technician utilization</h3>
+              <p>Track crew allocation and overtime exposure.</p>
+            </article>
+            <article>
+              <h3>Cash flow forecast</h3>
+              <p>Combine projected invoices and expenses into a 90-day outlook.</p>
+            </article>
+          </section>
+          <form class="form" aria-label="Report filters">
+            <label for="report-range">Date range</label>
+            <select id="report-range" name="report-range">
+              <option>Last 30 days</option>
+              <option>Quarter to date</option>
+              <option>Year to date</option>
+            </select>
+            <label for="report-format">Format</label>
+            <select id="report-format" name="report-format">
+              <option>PDF</option>
+              <option>Excel</option>
+              <option>CSV</option>
+            </select>
+            <button class="btn" type="button">Generate</button>
+          </form>
+        </div>
+      </section>
+
+      <section
+        id="panel-settings"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-settings"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Settings</h1>
+          <p>Configure company defaults, tax rules, payment gateways, and more.</p>
+        </header>
+        <div class="content-grid content-grid--two">
+          <article class="card">
+            <h2>Company profile</h2>
+            <p>Complete your business profile to personalize documents.</p>
+            <button class="btn" type="button" data-wizard-trigger>Launch setup</button>
+          </article>
+          <article class="card">
+            <h2>Notifications</h2>
+            <form class="form" aria-label="Notification preferences">
+              <label class="checkbox">
+                <input type="checkbox" checked />
+                <span>Email me when payments fail</span>
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" />
+                <span>Daily invoice digest</span>
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" checked />
+                <span>Mobile push for urgent work orders</span>
+              </label>
+            </form>
+
+          </article>
+        </div>
       </section>
     </main>
 
-    <template id="client-table-template">
-      <div>
-        <table aria-describedby="clients-heading">
-          <thead>
-            <tr>
-              <th scope="col">Client</th>
-              <th scope="col">Email</th>
-              <th scope="col">Phone</th>
-              <th scope="col">Invoices</th>
-              <th scope="col">Outstanding</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+    <footer class="app-footer">
+      <p>&copy; <span id="current-year"></span> Zantra Invoicing. Built for modern trades.</p>
+      <button class="btn btn--ghost" type="button" data-wizard-trigger>Restart onboarding</button>
+    </footer>
+
+
+    <section
+      class="wizard"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wizard-title"
+      aria-describedby="wizard-description"
+    >
+      <div class="wizard__backdrop" data-wizard-close></div>
+      <div class="wizard__dialog" role="document">
+        <header class="wizard__header">
+          <p class="wizard__badge">First-time setup</p>
+          <h2 id="wizard-title">Get Zantra ready for your crew</h2>
+          <p id="wizard-description">
+            Configure the essentials so you can invoice, quote, and collect payments without delay.
+          </p>
+        </header>
+        <div class="wizard__progress" aria-hidden="true">
+          <div class="wizard__progress-bar" id="wizard-progress"></div>
+        </div>
+        <section class="wizard__content" aria-live="polite"></section>
+        <footer class="wizard__footer">
+          <button class="btn btn--ghost" type="button" id="wizard-back">Back</button>
+          <div class="wizard__spacer"></div>
+          <button class="btn btn--ghost" type="button" id="wizard-skip">Skip</button>
+          <button class="btn" type="button" id="wizard-next">Next</button>
+        </footer>
       </div>
-    </template>
+    </section>
 
-    <template id="invoice-table-template">
-      <div>
-        <table aria-describedby="invoices-heading">
-          <thead>
-            <tr>
-              <th scope="col">Invoice</th>
-              <th scope="col">Client</th>
-              <th scope="col">Issue</th>
-              <th scope="col">Due</th>
-              <th scope="col">Amount</th>
-              <th scope="col">Paid</th>
-              <th scope="col">Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </template>
+    <div class="sr-only" aria-live="assertive" id="wizard-status"></div>
 
-    <template id="payment-table-template">
-      <div>
-        <table aria-describedby="payments-heading">
-          <thead>
-            <tr>
-              <th scope="col">Invoice</th>
-              <th scope="col">Client</th>
-              <th scope="col">Amount</th>
-              <th scope="col">Date</th>
-              <th scope="col">Method</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </template>
-
-    <script>
-      class DataManager {
-        constructor(storageKey = "zantra-invoicing") {
-          this.storageKey = storageKey;
-          this.listeners = new Map();
-          this.state = {
-            clients: [],
-            invoices: [],
-            payments: [],
-          };
-          this.#load();
-        }
-
-        on(eventName, callback) {
-          if (!this.listeners.has(eventName)) {
-            this.listeners.set(eventName, new Set());
-          }
-          this.listeners.get(eventName).add(callback);
-          return () => this.listeners.get(eventName)?.delete(callback);
-        }
-
-        emit(eventName, payload) {
-          const callbacks = this.listeners.get(eventName);
-          if (!callbacks) return;
-          callbacks.forEach((callback) => {
-            try {
-              callback(payload);
-            } catch (error) {
-              console.error(`DataManager listener error for ${eventName}`, error);
-            }
-          });
-        }
-
-        getClients() {
-          return this.state.clients.map((client) => ({ ...client }));
-        }
-
-        getClientById(id) {
-          return this.state.clients.find((client) => client.id === id) || null;
-        }
-
-        getInvoices() {
-          return this.state.invoices.map((invoice) => ({ ...invoice }));
-        }
-
-        getInvoiceById(id) {
-          return this.state.invoices.find((invoice) => invoice.id === id) || null;
-        }
-
-        getPayments() {
-          return this.state.payments.map((payment) => ({ ...payment }));
-        }
-
-        #persist() {
-          try {
-            const serialized = JSON.stringify(this.state);
-            window.localStorage.setItem(this.storageKey, serialized);
-          } catch (error) {
-            console.warn("Unable to persist data", error);
-          }
-        }
-
-        #load() {
-          try {
-            const raw = window.localStorage.getItem(this.storageKey);
-            if (!raw) return;
-            const parsed = JSON.parse(raw);
-            if (
-              parsed &&
-              Array.isArray(parsed.clients) &&
-              Array.isArray(parsed.invoices) &&
-              Array.isArray(parsed.payments)
-            ) {
-              this.state = {
-                clients: parsed.clients,
-                invoices: parsed.invoices,
-                payments: parsed.payments,
-              };
-            }
-          } catch (error) {
-            console.warn("Unable to load saved data", error);
-          }
-        }
-
-        #generateId(prefix) {
-          return `${prefix}_${crypto.randomUUID()}`;
-        }
-
-        #validateUniqueClientEmail(email, excludeId) {
-          return !this.state.clients.some(
-            (client) => client.email.toLowerCase() === email.toLowerCase() && client.id !== excludeId
-          );
-        }
-
-        addClient(clientInput) {
-          const name = clientInput.name?.trim();
-          const email = clientInput.email?.trim();
-          const phone = clientInput.phone?.trim() || "";
-
-          if (!name) {
-            throw new Error("Client name is required.");
-          }
-
-          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            throw new Error("A valid client email is required.");
-          }
-
-          if (!this.#validateUniqueClientEmail(email)) {
-            throw new Error("A client with this email already exists.");
-          }
-
-          const newClient = {
-            id: this.#generateId("client"),
-            name,
-            email,
-            phone,
-            createdAt: new Date().toISOString(),
-          };
-
-          this.state.clients.push(newClient);
-          this.#persist();
-          this.emit("clients:updated", this.getClients());
-          this.emit("data:changed");
-          return { ...newClient };
-        }
-
-        addInvoice(invoiceInput) {
-          const clientId = invoiceInput.clientId;
-          const client = this.getClientById(clientId);
-          if (!client) {
-            throw new Error("Selected client does not exist.");
-          }
-
-          const number = invoiceInput.number?.trim();
-          if (!number) {
-            throw new Error("Invoice number is required.");
-          }
-
-          if (
-            this.state.invoices.some(
-              (invoice) => invoice.number.toLowerCase() === number.toLowerCase()
-            )
-          ) {
-            throw new Error("Invoice number must be unique.");
-          }
-
-          const issueDate = invoiceInput.issueDate || new Date().toISOString().slice(0, 10);
-          const dueDate = invoiceInput.dueDate || issueDate;
-          if (dueDate < issueDate) {
-            throw new Error("Due date cannot be earlier than issue date.");
-          }
-
-          const amount = Number(invoiceInput.amount);
-          if (!Number.isFinite(amount) || amount <= 0) {
-            throw new Error("Invoice amount must be greater than zero.");
-          }
-
-          const newInvoice = {
-            id: this.#generateId("invoice"),
-            clientId,
-            number,
-            issueDate,
-            dueDate,
-            amount,
-            notes: invoiceInput.notes?.trim() || "",
-            status: "Open",
-            createdAt: new Date().toISOString(),
-          };
-
-          this.state.invoices.push(newInvoice);
-          this.#persist();
-          this.emit("invoices:updated", this.getInvoices());
-          this.emit("data:changed");
-          return { ...newInvoice };
-        }
-
-        addPayment(paymentInput) {
-          const invoiceId = paymentInput.invoiceId;
-          const invoice = this.getInvoiceById(invoiceId);
-          if (!invoice) {
-            throw new Error("Selected invoice does not exist.");
-          }
-
-          const amount = Number(paymentInput.amount);
-          if (!Number.isFinite(amount) || amount <= 0) {
-            throw new Error("Payment amount must be greater than zero.");
-          }
-
-          const outstanding = this.getInvoiceOutstanding(invoiceId);
-          if (amount > outstanding) {
-            throw new Error(
-              `Payment exceeds outstanding balance. Outstanding: ${outstanding.toFixed(2)}`
-            );
-          }
-
-          const paymentDate = paymentInput.date || new Date().toISOString().slice(0, 10);
-          const method = paymentInput.method?.trim();
-          if (!method) {
-            throw new Error("Payment method is required.");
-          }
-
-          const payment = {
-            id: this.#generateId("payment"),
-            invoiceId,
-            amount,
-            date: paymentDate,
-            method,
-            createdAt: new Date().toISOString(),
-          };
-
-          this.state.payments.push(payment);
-
-          const remaining = this.getInvoiceOutstanding(invoiceId);
-          if (remaining === 0) {
-            this.#setInvoiceStatus(invoiceId, "Paid");
-          } else if (remaining < this.getInvoiceTotal(invoiceId)) {
-            this.#setInvoiceStatus(invoiceId, "Partial");
-          }
-
-          this.#persist();
-          this.emit("payments:updated", this.getPayments());
-          this.emit("invoices:updated", this.getInvoices());
-          this.emit("data:changed");
-          return { ...payment };
-        }
-
-        #setInvoiceStatus(invoiceId, status) {
-          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
-          if (invoice) {
-            invoice.status = status;
-          }
-        }
-
-        getInvoiceTotal(invoiceId) {
-          const invoice = this.getInvoiceById(invoiceId);
-          if (!invoice) return 0;
-          return invoice.amount;
-        }
-
-        getInvoicePaid(invoiceId) {
-          return this.state.payments
-            .filter((payment) => payment.invoiceId === invoiceId)
-            .reduce((sum, payment) => sum + payment.amount, 0);
-        }
-
-        getInvoiceOutstanding(invoiceId) {
-          const total = this.getInvoiceTotal(invoiceId);
-          const paid = this.getInvoicePaid(invoiceId);
-          return Math.max(total - paid, 0);
-        }
-
-        getClientOutstanding(clientId) {
-          return this.state.invoices
-            .filter((invoice) => invoice.clientId === clientId)
-            .reduce((sum, invoice) => sum + this.getInvoiceOutstanding(invoice.id), 0);
-        }
-
-        getInvoiceWithClient(invoice) {
-          const client = this.getClientById(invoice.clientId);
-          return {
-            ...invoice,
-            clientName: client?.name ?? "Unknown",
-            paid: this.getInvoicePaid(invoice.id),
-            outstanding: this.getInvoiceOutstanding(invoice.id),
-          };
-        }
-
-        getPaymentWithReferences(payment) {
-          const invoice = this.getInvoiceById(payment.invoiceId);
-          const client = invoice ? this.getClientById(invoice.clientId) : null;
-          return {
-            ...payment,
-            invoiceNumber: invoice?.number ?? "Unknown",
-            clientName: client?.name ?? "Unknown",
-          };
-        }
-
-        getReports() {
-          const totalClients = this.state.clients.length;
-          const totalInvoices = this.state.invoices.length;
-          const totalInvoiceAmount = this.state.invoices.reduce(
-            (sum, invoice) => sum + invoice.amount,
-            0
-          );
-          const totalPayments = this.state.payments.reduce(
-            (sum, payment) => sum + payment.amount,
-            0
-          );
-          const totalOutstanding = this.state.invoices.reduce(
-            (sum, invoice) => sum + this.getInvoiceOutstanding(invoice.id),
-            0
-          );
-
-          const outstandingByClient = this.state.clients.map((client) => ({
-            clientId: client.id,
-            clientName: client.name,
-            outstanding: this.getClientOutstanding(client.id),
-          }));
-
-          const invoicesByStatus = ["Open", "Partial", "Paid"].map((status) => ({
-            status,
-            count: this.state.invoices.filter((invoice) => invoice.status === status).length,
-          }));
-
-          return {
-            totalClients,
-            totalInvoices,
-            totalInvoiceAmount,
-            totalPayments,
-            totalOutstanding,
-            outstandingByClient,
-            invoicesByStatus,
-          };
-        }
-
-        clearAll() {
-          this.state = { clients: [], invoices: [], payments: [] };
-          this.#persist();
-          this.emit("clients:updated", this.getClients());
-          this.emit("invoices:updated", this.getInvoices());
-          this.emit("payments:updated", this.getPayments());
-          this.emit("data:changed");
-        }
-      }
-
-      class ClientModule {
-        constructor(manager, listContainer, form, errorContainer) {
-          this.manager = manager;
-          this.listContainer = listContainer;
-          this.form = form;
-          this.errorContainer = errorContainer;
-
-          this.form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            this.#handleSubmit();
-          });
-
-          this.manager.on("clients:updated", () => this.render());
-          this.render();
-        }
-
-        #handleSubmit() {
-          const data = Object.fromEntries(new FormData(this.form).entries());
-          try {
-            this.manager.addClient(data);
-            this.errorContainer.textContent = "";
-            this.form.reset();
-            this.form.querySelector("input")?.focus();
-          } catch (error) {
-            this.errorContainer.textContent = error.message;
-          }
-        }
-
-        render() {
-          const clients = this.manager.getClients();
-          if (clients.length === 0) {
-            this.listContainer.innerHTML = '<p class="empty-state">No clients yet. Add your first client above.</p>';
-            return;
-          }
-
-          const template = document.getElementById("client-table-template");
-          const fragment = template.content.cloneNode(true);
-          const tbody = fragment.querySelector("tbody");
-
-          clients.forEach((client) => {
-            const invoices = this.manager
-              .getInvoices()
-              .filter((invoice) => invoice.clientId === client.id);
-            const outstanding = this.manager.getClientOutstanding(client.id);
-
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${client.name}</td>
-              <td>${client.email}</td>
-              <td>${client.phone || '<span class="muted">—</span>'}</td>
-              <td>${invoices.length}</td>
-              <td>$${outstanding.toFixed(2)}</td>
-            `;
-            tbody.append(tr);
-          });
-
-          this.listContainer.innerHTML = "";
-          this.listContainer.append(fragment);
-        }
-      }
-
-      class InvoiceModule {
-        constructor(manager, listContainer, form, errorContainer, clientSelect) {
-          this.manager = manager;
-          this.listContainer = listContainer;
-          this.form = form;
-          this.errorContainer = errorContainer;
-          this.clientSelect = clientSelect;
-
-          this.form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            this.#handleSubmit();
-          });
-
-          this.manager.on("clients:updated", () => this.#populateClients());
-          this.manager.on("invoices:updated", () => this.render());
-
-          this.#populateClients();
-          this.render();
-        }
-
-        #populateClients() {
-          const clients = this.manager.getClients();
-          this.clientSelect.innerHTML = '<option value="" disabled selected>Select client</option>';
-          clients.forEach((client) => {
-            const option = document.createElement("option");
-            option.value = client.id;
-            option.textContent = client.name;
-            this.clientSelect.append(option);
-          });
-          this.clientSelect.disabled = clients.length === 0;
-        }
-
-        #handleSubmit() {
-          const data = Object.fromEntries(new FormData(this.form).entries());
-          try {
-            this.manager.addInvoice({
-              ...data,
-              amount: data.amount,
-            });
-            this.errorContainer.textContent = "";
-            this.form.reset();
-            this.clientSelect.dispatchEvent(new Event("change"));
-          } catch (error) {
-            this.errorContainer.textContent = error.message;
-          }
-        }
-
-        render() {
-          const invoices = this.manager.getInvoices();
-          if (invoices.length === 0) {
-            this.listContainer.innerHTML = '<p class="empty-state">No invoices created yet.</p>';
-            return;
-          }
-
-          const template = document.getElementById("invoice-table-template");
-          const fragment = template.content.cloneNode(true);
-          const tbody = fragment.querySelector("tbody");
-
-          invoices
-            .map((invoice) => this.manager.getInvoiceWithClient(invoice))
-            .sort((a, b) => new Date(b.issueDate) - new Date(a.issueDate))
-            .forEach((invoice) => {
-              const outstandingBadgeClass =
-                invoice.status === "Paid"
-                  ? "success"
-                  : invoice.status === "Partial"
-                  ? "warning"
-                  : "danger";
-
-              const tr = document.createElement("tr");
-              tr.innerHTML = `
-                <td>${invoice.number}</td>
-                <td>${invoice.clientName}</td>
-                <td>${invoice.issueDate}</td>
-                <td>${invoice.dueDate}</td>
-                <td>$${invoice.amount.toFixed(2)}</td>
-                <td>$${invoice.paid.toFixed(2)}</td>
-                <td><span class="badge ${outstandingBadgeClass}">${invoice.status}</span></td>
-              `;
-              tbody.append(tr);
-            });
-
-          this.listContainer.innerHTML = "";
-          this.listContainer.append(fragment);
-        }
-      }
-
-      class PaymentModule {
-        constructor(manager, listContainer, form, errorContainer, invoiceSelect) {
-          this.manager = manager;
-          this.listContainer = listContainer;
-          this.form = form;
-          this.errorContainer = errorContainer;
-          this.invoiceSelect = invoiceSelect;
-
-          this.form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            this.#handleSubmit();
-          });
-
-          this.manager.on("invoices:updated", () => this.#populateInvoices());
-          this.manager.on("payments:updated", () => this.render());
-
-          this.#populateInvoices();
-          this.render();
-        }
-
-        #populateInvoices() {
-          const invoices = this.manager
-            .getInvoices()
-            .map((invoice) => this.manager.getInvoiceWithClient(invoice))
-            .filter((invoice) => invoice.outstanding > 0);
-
-          this.invoiceSelect.innerHTML = '<option value="" disabled selected>Select invoice</option>';
-          invoices.forEach((invoice) => {
-            const option = document.createElement("option");
-            option.value = invoice.id;
-            option.textContent = `${invoice.number} • ${invoice.clientName} • Outstanding $${invoice.outstanding.toFixed(2)}`;
-            this.invoiceSelect.append(option);
-          });
-          this.invoiceSelect.disabled = invoices.length === 0;
-        }
-
-        #handleSubmit() {
-          const data = Object.fromEntries(new FormData(this.form).entries());
-          try {
-            this.manager.addPayment({
-              ...data,
-              amount: data.amount,
-            });
-            this.errorContainer.textContent = "";
-            this.form.reset();
-            this.invoiceSelect.dispatchEvent(new Event("change"));
-          } catch (error) {
-            this.errorContainer.textContent = error.message;
-          }
-        }
-
-        render() {
-          const payments = this.manager.getPayments();
-          if (payments.length === 0) {
-            this.listContainer.innerHTML = '<p class="empty-state">No payments recorded yet.</p>';
-            return;
-          }
-
-          const template = document.getElementById("payment-table-template");
-          const fragment = template.content.cloneNode(true);
-          const tbody = fragment.querySelector("tbody");
-
-          payments
-            .map((payment) => this.manager.getPaymentWithReferences(payment))
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .forEach((payment) => {
-              const tr = document.createElement("tr");
-              tr.innerHTML = `
-                <td>${payment.invoiceNumber}</td>
-                <td>${payment.clientName}</td>
-                <td>$${payment.amount.toFixed(2)}</td>
-                <td>${payment.date}</td>
-                <td>${payment.method}</td>
-              `;
-              tbody.append(tr);
-            });
-
-          this.listContainer.innerHTML = "";
-          this.listContainer.append(fragment);
-        }
-      }
-
-      class ReportsModule {
-        constructor(manager, container) {
-          this.manager = manager;
-          this.container = container;
-
-          const render = () => this.render();
-          this.manager.on("clients:updated", render);
-          this.manager.on("invoices:updated", render);
-          this.manager.on("payments:updated", render);
-
-          this.render();
-        }
-
-        render() {
-          const reports = this.manager.getReports();
-
-          const outstandingRows = reports.outstandingByClient
-            .filter((item) => item.outstanding > 0)
-            .map(
-              (item) => `
-                <tr>
-                  <td>${item.clientName}</td>
-                  <td>$${item.outstanding.toFixed(2)}</td>
-                </tr>
-              `
-            )
-            .join("") || '<tr><td colspan="2" class="muted">No outstanding balances</td></tr>';
-
-          const statusRows = reports.invoicesByStatus
-            .map(
-              (item) => `
-                <tr>
-                  <td>${item.status}</td>
-                  <td>${item.count}</td>
-                </tr>
-              `
-            )
-            .join("");
-
-          this.container.innerHTML = `
-            <div class="totals-grid" role="list">
-              <dl class="metric" role="listitem">
-                <dt>Total Clients</dt>
-                <dd>${reports.totalClients}</dd>
-              </dl>
-              <dl class="metric" role="listitem">
-                <dt>Total Invoiced</dt>
-                <dd>$${reports.totalInvoiceAmount.toFixed(2)}</dd>
-              </dl>
-              <dl class="metric" role="listitem">
-                <dt>Total Payments</dt>
-                <dd>$${reports.totalPayments.toFixed(2)}</dd>
-              </dl>
-              <dl class="metric" role="listitem">
-                <dt>Total Outstanding</dt>
-                <dd>$${reports.totalOutstanding.toFixed(2)}</dd>
-              </dl>
-            </div>
-            <div class="grid-2" style="margin-top: 1.5rem;">
-              <div>
-                <h3>Outstanding by Client</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">Client</th>
-                      <th scope="col">Outstanding</th>
-                    </tr>
-                  </thead>
-                  <tbody>${outstandingRows}</tbody>
-                </table>
-              </div>
-              <div>
-                <h3>Invoices by Status</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">Status</th>
-                      <th scope="col">Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>${statusRows}</tbody>
-                </table>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      function initializeApp() {
-        const manager = new DataManager();
-
-        const clientModule = new ClientModule(
-          manager,
-          document.getElementById("client-list"),
-          document.getElementById("client-form"),
-          document.getElementById("client-form-error")
-        );
-
-        const invoiceModule = new InvoiceModule(
-          manager,
-          document.getElementById("invoice-list"),
-          document.getElementById("invoice-form"),
-          document.getElementById("invoice-form-error"),
-          document.getElementById("invoice-client")
-        );
-
-        const paymentModule = new PaymentModule(
-          manager,
-          document.getElementById("payment-list"),
-          document.getElementById("payment-form"),
-          document.getElementById("payment-form-error"),
-          document.getElementById("payment-invoice")
-        );
-
-        const reportsModule = new ReportsModule(
-          manager,
-          document.getElementById("reports-summary")
-        );
-
-        window.app = { manager, clientModule, invoiceModule, paymentModule, reportsModule };
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initializeApp);
-      } else {
-        initializeApp();
-      }
-    </script>
+    <script src="scripts/main.js" defer></script>
 
   </body>
 </html>
