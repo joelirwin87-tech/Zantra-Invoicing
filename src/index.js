@@ -283,6 +283,8 @@ class ZantraApp {
     this.clientFormInitialized = false;
     this.serviceFormInitialized = false;
     this.settingsFormInitialized = false;
+    this.toastDismissTimeout = null;
+    this.handleQuoteListClick = this.handleQuoteListClick.bind(this);
   }
 
   init() {
@@ -335,6 +337,8 @@ class ZantraApp {
     this.settingsForm = document.querySelector('#settings-form');
     this.reportCanvas = document.getElementById('reports-chart');
 
+    this.toastRegion = document.querySelector('[data-toast-region]');
+
     this.invoiceFormEditor = new LineItemEditor(this.invoiceForm, {
       onTotalsChange: (items) => this.updateInvoiceTotals(items),
       services: this.state.services,
@@ -345,6 +349,10 @@ class ZantraApp {
       services: this.state.services,
       gstRate: this.state.settings.gstRate
     });
+
+    if (this.quoteListBody) {
+      this.quoteListBody.addEventListener('click', this.handleQuoteListClick);
+    }
   }
 
   setupNavigation() {
@@ -459,8 +467,14 @@ class ZantraApp {
   refreshData() {
     this.state.clients = ClientManager.list();
     this.state.services = ServiceManager.list();
-    this.state.invoices = InvoiceManager.list();
-    this.state.quotes = QuoteManager.list();
+    this.state.invoices = InvoiceManager.list().map((invoice) => ({
+      ...invoice,
+      type: invoice.type || 'invoice'
+    }));
+    this.state.quotes = QuoteManager.list().map((quote) => ({
+      ...quote,
+      type: quote.type || 'quote'
+    }));
     this.state.payments = PaymentManager.list();
     this.state.settings = SettingsManager.get();
 
@@ -919,28 +933,48 @@ class ZantraApp {
         .sort((a, b) => Date.parse(b.issueDate) - Date.parse(a.issueDate))
         .forEach((quote) => {
           const row = document.createElement('tr');
+          const isConverted = quote.status === 'converted';
+          const isPending = quote.status === 'pending';
+          const canConvert = !isConverted && quote.status !== 'declined';
           const statusMarkup =
             quote.status === 'accepted'
               ? `<span class="status-pill status-pill--success">Accepted</span>`
               : quote.status === 'declined'
               ? `<span class="status-pill status-pill--muted">Declined</span>`
+              : isConverted
+              ? `<span class="status-pill status-pill--info">Converted</span>`
               : `<span class="status-pill status-pill--warning">Pending</span>`;
+          const decisionLabel =
+            quote.status === 'accepted'
+              ? 'Accepted'
+              : quote.status === 'declined'
+              ? 'Declined'
+              : isConverted
+              ? 'Converted'
+              : '';
+          const decisionMeta =
+            decisionLabel && quote.decisionDate
+              ? `<div class="status-meta">${decisionLabel} ${formatDate(quote.decisionDate)}</div>`
+              : '';
+
+          const convertButton = `<button class="convert-to-invoice-btn" type="button" data-quote-id="${quote.id}" ${
+            canConvert ? '' : 'disabled aria-disabled="true"'
+          }>Convert</button>`;
+
           const actions = [
+            convertButton,
             `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${quote.id}">Edit</button>`,
-            quote.status === 'pending'
+            isPending
               ? `<button class="btn btn--sm btn--primary" data-action="accept" data-id="${quote.id}">Accept</button>`
               : '',
-            quote.status === 'pending'
+            isPending
               ? `<button class="btn btn--sm btn--secondary" data-action="decline" data-id="${quote.id}">Decline</button>`
               : '',
             `<button class="btn btn--sm btn--destructive" data-action="delete" data-id="${quote.id}">Delete</button>`
           ]
             .filter(Boolean)
             .join('');
-          const decisionMeta =
-            quote.status !== 'pending' && quote.decisionDate
-              ? `<div class="status-meta">${formatDate(quote.decisionDate)}</div>`
-              : '';
+
           row.innerHTML = `
             <td>${quote.number}</td>
             <td>${quote.clientName}</td>
@@ -952,6 +986,14 @@ class ZantraApp {
               <div class="table-actions">${actions}</div>
             </td>
           `;
+
+          row.classList.toggle('quote-row--converted', isConverted);
+          if (isConverted) {
+            row.setAttribute('aria-disabled', 'true');
+          } else {
+            row.removeAttribute('aria-disabled');
+          }
+
           this.quoteListBody.appendChild(row);
         });
 
@@ -998,6 +1040,129 @@ class ZantraApp {
         });
       });
     }
+  }
+
+  handleQuoteListClick(event) {
+    const target = event.target.closest('.convert-to-invoice-btn');
+    if (!target || target.disabled || target.getAttribute('aria-disabled') === 'true') {
+      return;
+    }
+    event.preventDefault();
+    const quoteId = target.getAttribute('data-quote-id');
+    if (!quoteId) {
+      return;
+    }
+    this.convertQuoteToInvoice(quoteId);
+  }
+
+  convertQuoteToInvoice(quoteId) {
+    const quote = this.state.quotes.find((item) => item.id === quoteId);
+    if (!quote) {
+      this.showToast('Unable to locate quote for conversion.', 'error');
+      return;
+    }
+    if (quote.status === 'converted') {
+      this.showToast('Quote has already been converted.', 'info');
+      return;
+    }
+    if (!Array.isArray(quote.lineItems) || !quote.lineItems.length) {
+      this.showToast('Quote must contain at least one line item before conversion.', 'error');
+      return;
+    }
+
+    try {
+      const now = new Date();
+      let issueDate = now;
+      if (quote.issueDate) {
+        const parsed = Date.parse(quote.issueDate);
+        if (!Number.isNaN(parsed)) {
+          issueDate = new Date(parsed);
+        }
+      }
+      const issueDateIso = issueDate.toISOString();
+      const dueDateIso = new Date(issueDate.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      const invoicePayload = {
+        clientId: quote.clientId,
+        issueDate: issueDateIso,
+        dueDate: dueDateIso,
+        notes: quote.notes,
+        lineItems: quote.lineItems.map((item) => ({
+          serviceId: item.serviceId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          applyGst: item.applyGst
+        })),
+        status: 'unpaid',
+        type: 'invoice'
+      };
+
+      const createdInvoice = InvoiceManager.create(invoicePayload);
+      DataManager.saveInvoice({ ...createdInvoice, type: 'invoice' });
+
+      const updatedQuote = QuoteManager.update(quoteId, {
+        status: 'converted',
+        decisionDate: DataManager.now()
+      });
+      DataManager.saveQuote({ ...updatedQuote, type: 'quote' });
+
+      this.refreshData();
+      this.renderAll();
+      this.showToast('Quote converted to Invoice successfully', 'success');
+    } catch (error) {
+      console.error('Failed to convert quote to invoice:', error);
+      this.showToast('Unable to convert quote. Please try again.', 'error');
+    }
+  }
+
+  showToast(message, variant = 'info') {
+    if (!message) {
+      return;
+    }
+    const region = this.ensureToastRegion();
+    if (!region) {
+      console.warn('Toast region is unavailable. Message:', message);
+      return;
+    }
+
+    region.querySelectorAll('.toast').forEach((existing) => existing.remove());
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${variant}`;
+    toast.setAttribute('role', 'status');
+    toast.textContent = message;
+    region.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.add('is-visible');
+    });
+
+    if (this.toastDismissTimeout) {
+      clearTimeout(this.toastDismissTimeout);
+    }
+    this.toastDismissTimeout = setTimeout(() => {
+      toast.classList.remove('is-visible');
+      setTimeout(() => {
+        toast.remove();
+      }, 200);
+    }, 3200);
+  }
+
+  ensureToastRegion() {
+    if (this.toastRegion && document.body.contains(this.toastRegion)) {
+      return this.toastRegion;
+    }
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    const region = document.createElement('div');
+    region.className = 'toast-region';
+    region.setAttribute('aria-live', 'polite');
+    region.setAttribute('aria-atomic', 'true');
+    region.dataset.toastRegion = 'true';
+    document.body.appendChild(region);
+    this.toastRegion = region;
+    return region;
   }
 
   handleQuoteSubmit() {
