@@ -121,7 +121,8 @@ body {
   cursor: pointer;
 }
 
-.tablist [role="tab"][aria-selected="true"] {
+.tablist [role="tab"][aria-selected="true"],
+.tablist [role="tab"].active {
   background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: var(--surface-contrast);
   box-shadow: 0 12px 24px rgba(255, 98, 27, 0.35);
