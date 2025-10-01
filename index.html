@@ -1,143 +1,1154 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Zantra Payments Tracker</title>
-    <link rel="stylesheet" href="css/styles.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-    <script type="module" src="js/app.js" defer></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zantra Invoicing Dashboard</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f8fb;
+        --card-bg: #ffffff;
+        --primary: #2563eb;
+        --primary-dark: #1e3a8a;
+        --text: #1f2933;
+        --muted: #6b7280;
+        --border: #d1d5db;
+        font-family: "Segoe UI", Roboto, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      header {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        padding: 1.5rem 2rem;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+      }
+
+      main {
+        padding: 2rem;
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      @media (min-width: 1080px) {
+        main {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      section {
+        background: var(--card-bg);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        border: 1px solid var(--border);
+      }
+
+      h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+      }
+
+      form {
+        display: grid;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      fieldset {
+        border: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 1rem;
+      }
+
+      label {
+        display: grid;
+        gap: 0.35rem;
+        font-weight: 600;
+      }
+
+      input,
+      select,
+      textarea {
+        padding: 0.65rem 0.75rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--border);
+        font-size: 1rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 0.75rem 1.5rem;
+        background: var(--primary);
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        justify-self: start;
+      }
+
+      button:hover,
+      button:focus-visible {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+
+      th,
+      td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+
+      th {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+
+      tbody tr:hover {
+        background: rgba(37, 99, 235, 0.08);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.2rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .badge.success {
+        background: rgba(16, 185, 129, 0.18);
+        color: #047857;
+      }
+
+      .badge.warning {
+        background: rgba(234, 179, 8, 0.18);
+        color: #92400e;
+      }
+
+      .badge.danger {
+        background: rgba(248, 113, 113, 0.2);
+        color: #991b1b;
+      }
+
+      .grid-2 {
+        display: grid;
+        gap: 1rem;
+      }
+
+      @media (min-width: 720px) {
+        .grid-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      .empty-state {
+        padding: 1rem;
+        border-radius: 0.75rem;
+        background: rgba(148, 163, 184, 0.15);
+        color: var(--muted);
+        text-align: center;
+        font-style: italic;
+      }
+
+      .totals-grid {
+        display: grid;
+        gap: 1rem;
+      }
+
+      @media (min-width: 600px) {
+        .totals-grid {
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+      }
+
+      .metric {
+        background: rgba(37, 99, 235, 0.08);
+        padding: 1rem;
+        border-radius: 0.75rem;
+      }
+
+      .metric dt {
+        font-size: 0.85rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .metric dd {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 700;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+      }
+
+      .error {
+        color: #b91c1c;
+        font-size: 0.85rem;
+      }
+    </style>
   </head>
   <body>
-    <header class="app-header">
-      <div class="header-content">
-        <h1>Zantra Payments Tracker</h1>
-        <p class="tagline">Monitor invoices, payments, and GST in one workspace.</p>
-      </div>
+    <header>
+      <h1>Zantra Invoicing Control Center</h1>
+      <p class="sr-only">
+        Manage clients, invoices, payments, and reports from a single unified
+        dashboard.
+      </p>
     </header>
-
-    <main class="layout">
-      <section class="panel" aria-labelledby="invoice-form-heading">
-        <div class="panel-header">
-          <h2 id="invoice-form-heading">Create Invoice</h2>
-          <p>Capture new invoices with GST-aware totals and due dates.</p>
-        </div>
-        <form id="invoice-form" class="form-grid" novalidate>
-          <div class="form-field">
-            <label for="invoice-number">Invoice Number</label>
-            <input id="invoice-number" name="invoiceNumber" type="text" required aria-required="true" />
-          </div>
-          <div class="form-field">
-            <label for="client-name">Client</label>
-            <input id="client-name" name="clientName" type="text" required aria-required="true" />
-          </div>
-          <div class="form-field">
-            <label for="issue-date">Issue Date</label>
-            <input id="issue-date" name="issueDate" type="date" required aria-required="true" />
-          </div>
-          <div class="form-field">
-            <label for="due-date">Due Date</label>
-            <input id="due-date" name="dueDate" type="date" required aria-required="true" />
-          </div>
-          <div class="form-field">
-            <label for="invoice-amount">Amount (excl. GST)</label>
-            <input id="invoice-amount" name="amount" type="number" min="0" step="0.01" required aria-required="true" />
-          </div>
-          <div class="form-field">
-            <label for="gst-rate">GST Rate (%)</label>
-            <input id="gst-rate" name="gstRate" type="number" min="0" step="0.01" value="10" required aria-required="true" />
-          </div>
-          <div class="form-field form-field--span">
-            <label for="invoice-notes">Notes</label>
-            <textarea id="invoice-notes" name="notes" rows="2" placeholder="Internal notes or payment instructions"></textarea>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Save Invoice</button>
-            <button type="reset" class="btn btn-secondary">Reset</button>
-          </div>
+    <main>
+      <section aria-labelledby="clients-heading">
+        <h2 id="clients-heading">Clients</h2>
+        <form id="client-form" novalidate>
+          <fieldset>
+            <legend class="sr-only">Client information</legend>
+            <label for="client-name"
+              >Name
+              <input
+                id="client-name"
+                name="name"
+                type="text"
+                placeholder="Acme Corp"
+                autocomplete="organization"
+                required
+                aria-required="true"
+              />
+            </label>
+            <label for="client-email"
+              >Email
+              <input
+                id="client-email"
+                name="email"
+                type="email"
+                placeholder="billing@acme.com"
+                autocomplete="email"
+                required
+                aria-required="true"
+              />
+            </label>
+            <label for="client-phone"
+              >Phone
+              <input
+                id="client-phone"
+                name="phone"
+                type="tel"
+                placeholder="+1 555 000 0000"
+                pattern="^[+0-9()\s-]{7,}$"
+                aria-describedby="client-phone-help"
+              />
+              <span id="client-phone-help" class="muted"
+                >Include country code if international.</span
+              >
+            </label>
+            <div id="client-form-error" class="error" role="alert"></div>
+            <button type="submit">Save Client</button>
+          </fieldset>
         </form>
-        <p id="form-feedback" class="form-feedback" role="status" aria-live="polite"></p>
+        <div id="client-list" role="region" aria-live="polite"></div>
       </section>
 
-      <section class="panel" aria-labelledby="invoice-list-heading">
-        <div class="panel-header">
-          <h2 id="invoice-list-heading">Invoices</h2>
-          <p>Update payment progress and keep statuses accurate.</p>
-        </div>
-        <div class="table-container" role="region" aria-live="polite">
-          <table class="data-table" aria-describedby="invoice-list-heading">
-            <thead>
-              <tr>
-                <th scope="col">Invoice</th>
-                <th scope="col">Client</th>
-                <th scope="col">Issued</th>
-                <th scope="col">Due</th>
-                <th scope="col" class="numeric">Amount</th>
-                <th scope="col" class="numeric">GST</th>
-                <th scope="col" class="numeric">Paid</th>
-                <th scope="col" class="numeric">Outstanding</th>
-                <th scope="col">Status</th>
-                <th scope="col">Payment Date</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="invoice-table-body">
-              <tr>
-                <td colspan="11" class="empty-state">No invoices captured yet.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <section aria-labelledby="invoices-heading">
+        <h2 id="invoices-heading">Invoices</h2>
+        <form id="invoice-form" novalidate>
+          <fieldset>
+            <legend class="sr-only">Invoice details</legend>
+            <label for="invoice-client"
+              >Client
+              <select id="invoice-client" name="clientId" required>
+                <option value="" disabled selected>Select client</option>
+              </select>
+            </label>
+            <div class="grid-2">
+              <label for="invoice-number"
+                >Invoice #
+                <input
+                  id="invoice-number"
+                  name="number"
+                  type="text"
+                  placeholder="INV-2024-001"
+                  required
+                />
+              </label>
+              <label for="invoice-amount"
+                >Amount
+                <input
+                  id="invoice-amount"
+                  name="amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="1200.00"
+                  required
+                />
+              </label>
+            </div>
+            <div class="grid-2">
+              <label for="invoice-issue-date"
+                >Issue Date
+                <input id="invoice-issue-date" name="issueDate" type="date" required />
+              </label>
+              <label for="invoice-due-date"
+                >Due Date
+                <input id="invoice-due-date" name="dueDate" type="date" required />
+              </label>
+            </div>
+            <label for="invoice-notes"
+              >Notes
+              <textarea
+                id="invoice-notes"
+                name="notes"
+                rows="2"
+                placeholder="Optional notes for the client"
+              ></textarea>
+            </label>
+            <div id="invoice-form-error" class="error" role="alert"></div>
+            <button type="submit">Create Invoice</button>
+          </fieldset>
+        </form>
+        <div id="invoice-list" role="region" aria-live="polite"></div>
       </section>
 
-      <section class="panel" aria-labelledby="reports-heading">
-        <div class="panel-header">
-          <h2 id="reports-heading">Reports</h2>
-          <p>Surface outstanding balances, monthly performance, and GST exposure.</p>
-        </div>
-        <div class="reports-grid">
-          <article class="report-card" aria-labelledby="outstanding-heading">
-            <header>
-              <h3 id="outstanding-heading">Outstanding Invoices</h3>
-              <p class="report-subtitle">Focus on invoices that still need attention.</p>
-            </header>
-            <div id="outstanding-container" class="report-content">
-              <p class="empty-state">All caught up! No outstanding invoices.</p>
+      <section aria-labelledby="payments-heading">
+        <h2 id="payments-heading">Payments</h2>
+        <form id="payment-form" novalidate>
+          <fieldset>
+            <legend class="sr-only">Payment details</legend>
+            <label for="payment-invoice"
+              >Invoice
+              <select id="payment-invoice" name="invoiceId" required>
+                <option value="" disabled selected>Select invoice</option>
+              </select>
+            </label>
+            <div class="grid-2">
+              <label for="payment-amount"
+                >Amount
+                <input
+                  id="payment-amount"
+                  name="amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="400.00"
+                  required
+                />
+              </label>
+              <label for="payment-date"
+                >Date
+                <input id="payment-date" name="date" type="date" required />
+              </label>
             </div>
-          </article>
+            <label for="payment-method"
+              >Method
+              <input
+                id="payment-method"
+                name="method"
+                type="text"
+                placeholder="Wire Transfer"
+                required
+              />
+            </label>
+            <div id="payment-form-error" class="error" role="alert"></div>
+            <button type="submit">Record Payment</button>
+          </fieldset>
+        </form>
+        <div id="payment-list" role="region" aria-live="polite"></div>
+      </section>
 
-          <article class="report-card" aria-labelledby="paid-monthly-heading">
-            <header>
-              <h3 id="paid-monthly-heading">Paid Totals by Month</h3>
-              <p class="report-subtitle">Track realised revenue trends.</p>
-            </header>
-            <div class="report-content">
-              <canvas id="paid-monthly-chart" role="img" aria-label="Line chart of paid totals by month"></canvas>
-              <p class="empty-state" id="paid-monthly-empty">No payments recorded yet.</p>
-            </div>
-          </article>
-
-          <article class="report-card" aria-labelledby="gst-summary-heading">
-            <header>
-              <h3 id="gst-summary-heading">GST Summary</h3>
-              <p class="report-subtitle">Compare GST collected vs. outstanding.</p>
-            </header>
-            <div class="report-content">
-              <canvas id="gst-summary-chart" role="img" aria-label="Pie chart of GST summary"></canvas>
-              <dl class="gst-breakdown" id="gst-breakdown"></dl>
-              <p class="empty-state" id="gst-summary-empty">Add invoices to see GST exposure.</p>
-            </div>
-          </article>
-        </div>
+      <section aria-labelledby="reports-heading">
+        <h2 id="reports-heading">Reports</h2>
+        <div id="reports-summary"></div>
       </section>
     </main>
 
-    <footer class="app-footer">
-      <p>&copy; <span id="current-year"></span> Zantra Finance Tools</p>
-    </footer>
+    <template id="client-table-template">
+      <div>
+        <table aria-describedby="clients-heading">
+          <thead>
+            <tr>
+              <th scope="col">Client</th>
+              <th scope="col">Email</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Invoices</th>
+              <th scope="col">Outstanding</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </template>
+
+    <template id="invoice-table-template">
+      <div>
+        <table aria-describedby="invoices-heading">
+          <thead>
+            <tr>
+              <th scope="col">Invoice</th>
+              <th scope="col">Client</th>
+              <th scope="col">Issue</th>
+              <th scope="col">Due</th>
+              <th scope="col">Amount</th>
+              <th scope="col">Paid</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </template>
+
+    <template id="payment-table-template">
+      <div>
+        <table aria-describedby="payments-heading">
+          <thead>
+            <tr>
+              <th scope="col">Invoice</th>
+              <th scope="col">Client</th>
+              <th scope="col">Amount</th>
+              <th scope="col">Date</th>
+              <th scope="col">Method</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </template>
+
+    <script>
+      class DataManager {
+        constructor(storageKey = "zantra-invoicing") {
+          this.storageKey = storageKey;
+          this.listeners = new Map();
+          this.state = {
+            clients: [],
+            invoices: [],
+            payments: [],
+          };
+          this.#load();
+        }
+
+        on(eventName, callback) {
+          if (!this.listeners.has(eventName)) {
+            this.listeners.set(eventName, new Set());
+          }
+          this.listeners.get(eventName).add(callback);
+          return () => this.listeners.get(eventName)?.delete(callback);
+        }
+
+        emit(eventName, payload) {
+          const callbacks = this.listeners.get(eventName);
+          if (!callbacks) return;
+          callbacks.forEach((callback) => {
+            try {
+              callback(payload);
+            } catch (error) {
+              console.error(`DataManager listener error for ${eventName}`, error);
+            }
+          });
+        }
+
+        getClients() {
+          return this.state.clients.map((client) => ({ ...client }));
+        }
+
+        getClientById(id) {
+          return this.state.clients.find((client) => client.id === id) || null;
+        }
+
+        getInvoices() {
+          return this.state.invoices.map((invoice) => ({ ...invoice }));
+        }
+
+        getInvoiceById(id) {
+          return this.state.invoices.find((invoice) => invoice.id === id) || null;
+        }
+
+        getPayments() {
+          return this.state.payments.map((payment) => ({ ...payment }));
+        }
+
+        #persist() {
+          try {
+            const serialized = JSON.stringify(this.state);
+            window.localStorage.setItem(this.storageKey, serialized);
+          } catch (error) {
+            console.warn("Unable to persist data", error);
+          }
+        }
+
+        #load() {
+          try {
+            const raw = window.localStorage.getItem(this.storageKey);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (
+              parsed &&
+              Array.isArray(parsed.clients) &&
+              Array.isArray(parsed.invoices) &&
+              Array.isArray(parsed.payments)
+            ) {
+              this.state = {
+                clients: parsed.clients,
+                invoices: parsed.invoices,
+                payments: parsed.payments,
+              };
+            }
+          } catch (error) {
+            console.warn("Unable to load saved data", error);
+          }
+        }
+
+        #generateId(prefix) {
+          return `${prefix}_${crypto.randomUUID()}`;
+        }
+
+        #validateUniqueClientEmail(email, excludeId) {
+          return !this.state.clients.some(
+            (client) => client.email.toLowerCase() === email.toLowerCase() && client.id !== excludeId
+          );
+        }
+
+        addClient(clientInput) {
+          const name = clientInput.name?.trim();
+          const email = clientInput.email?.trim();
+          const phone = clientInput.phone?.trim() || "";
+
+          if (!name) {
+            throw new Error("Client name is required.");
+          }
+
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            throw new Error("A valid client email is required.");
+          }
+
+          if (!this.#validateUniqueClientEmail(email)) {
+            throw new Error("A client with this email already exists.");
+          }
+
+          const newClient = {
+            id: this.#generateId("client"),
+            name,
+            email,
+            phone,
+            createdAt: new Date().toISOString(),
+          };
+
+          this.state.clients.push(newClient);
+          this.#persist();
+          this.emit("clients:updated", this.getClients());
+          this.emit("data:changed");
+          return { ...newClient };
+        }
+
+        addInvoice(invoiceInput) {
+          const clientId = invoiceInput.clientId;
+          const client = this.getClientById(clientId);
+          if (!client) {
+            throw new Error("Selected client does not exist.");
+          }
+
+          const number = invoiceInput.number?.trim();
+          if (!number) {
+            throw new Error("Invoice number is required.");
+          }
+
+          if (
+            this.state.invoices.some(
+              (invoice) => invoice.number.toLowerCase() === number.toLowerCase()
+            )
+          ) {
+            throw new Error("Invoice number must be unique.");
+          }
+
+          const issueDate = invoiceInput.issueDate || new Date().toISOString().slice(0, 10);
+          const dueDate = invoiceInput.dueDate || issueDate;
+          if (dueDate < issueDate) {
+            throw new Error("Due date cannot be earlier than issue date.");
+          }
+
+          const amount = Number(invoiceInput.amount);
+          if (!Number.isFinite(amount) || amount <= 0) {
+            throw new Error("Invoice amount must be greater than zero.");
+          }
+
+          const newInvoice = {
+            id: this.#generateId("invoice"),
+            clientId,
+            number,
+            issueDate,
+            dueDate,
+            amount,
+            notes: invoiceInput.notes?.trim() || "",
+            status: "Open",
+            createdAt: new Date().toISOString(),
+          };
+
+          this.state.invoices.push(newInvoice);
+          this.#persist();
+          this.emit("invoices:updated", this.getInvoices());
+          this.emit("data:changed");
+          return { ...newInvoice };
+        }
+
+        addPayment(paymentInput) {
+          const invoiceId = paymentInput.invoiceId;
+          const invoice = this.getInvoiceById(invoiceId);
+          if (!invoice) {
+            throw new Error("Selected invoice does not exist.");
+          }
+
+          const amount = Number(paymentInput.amount);
+          if (!Number.isFinite(amount) || amount <= 0) {
+            throw new Error("Payment amount must be greater than zero.");
+          }
+
+          const outstanding = this.getInvoiceOutstanding(invoiceId);
+          if (amount > outstanding) {
+            throw new Error(
+              `Payment exceeds outstanding balance. Outstanding: ${outstanding.toFixed(2)}`
+            );
+          }
+
+          const paymentDate = paymentInput.date || new Date().toISOString().slice(0, 10);
+          const method = paymentInput.method?.trim();
+          if (!method) {
+            throw new Error("Payment method is required.");
+          }
+
+          const payment = {
+            id: this.#generateId("payment"),
+            invoiceId,
+            amount,
+            date: paymentDate,
+            method,
+            createdAt: new Date().toISOString(),
+          };
+
+          this.state.payments.push(payment);
+
+          const remaining = this.getInvoiceOutstanding(invoiceId);
+          if (remaining === 0) {
+            this.#setInvoiceStatus(invoiceId, "Paid");
+          } else if (remaining < this.getInvoiceTotal(invoiceId)) {
+            this.#setInvoiceStatus(invoiceId, "Partial");
+          }
+
+          this.#persist();
+          this.emit("payments:updated", this.getPayments());
+          this.emit("invoices:updated", this.getInvoices());
+          this.emit("data:changed");
+          return { ...payment };
+        }
+
+        #setInvoiceStatus(invoiceId, status) {
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (invoice) {
+            invoice.status = status;
+          }
+        }
+
+        getInvoiceTotal(invoiceId) {
+          const invoice = this.getInvoiceById(invoiceId);
+          if (!invoice) return 0;
+          return invoice.amount;
+        }
+
+        getInvoicePaid(invoiceId) {
+          return this.state.payments
+            .filter((payment) => payment.invoiceId === invoiceId)
+            .reduce((sum, payment) => sum + payment.amount, 0);
+        }
+
+        getInvoiceOutstanding(invoiceId) {
+          const total = this.getInvoiceTotal(invoiceId);
+          const paid = this.getInvoicePaid(invoiceId);
+          return Math.max(total - paid, 0);
+        }
+
+        getClientOutstanding(clientId) {
+          return this.state.invoices
+            .filter((invoice) => invoice.clientId === clientId)
+            .reduce((sum, invoice) => sum + this.getInvoiceOutstanding(invoice.id), 0);
+        }
+
+        getInvoiceWithClient(invoice) {
+          const client = this.getClientById(invoice.clientId);
+          return {
+            ...invoice,
+            clientName: client?.name ?? "Unknown",
+            paid: this.getInvoicePaid(invoice.id),
+            outstanding: this.getInvoiceOutstanding(invoice.id),
+          };
+        }
+
+        getPaymentWithReferences(payment) {
+          const invoice = this.getInvoiceById(payment.invoiceId);
+          const client = invoice ? this.getClientById(invoice.clientId) : null;
+          return {
+            ...payment,
+            invoiceNumber: invoice?.number ?? "Unknown",
+            clientName: client?.name ?? "Unknown",
+          };
+        }
+
+        getReports() {
+          const totalClients = this.state.clients.length;
+          const totalInvoices = this.state.invoices.length;
+          const totalInvoiceAmount = this.state.invoices.reduce(
+            (sum, invoice) => sum + invoice.amount,
+            0
+          );
+          const totalPayments = this.state.payments.reduce(
+            (sum, payment) => sum + payment.amount,
+            0
+          );
+          const totalOutstanding = this.state.invoices.reduce(
+            (sum, invoice) => sum + this.getInvoiceOutstanding(invoice.id),
+            0
+          );
+
+          const outstandingByClient = this.state.clients.map((client) => ({
+            clientId: client.id,
+            clientName: client.name,
+            outstanding: this.getClientOutstanding(client.id),
+          }));
+
+          const invoicesByStatus = ["Open", "Partial", "Paid"].map((status) => ({
+            status,
+            count: this.state.invoices.filter((invoice) => invoice.status === status).length,
+          }));
+
+          return {
+            totalClients,
+            totalInvoices,
+            totalInvoiceAmount,
+            totalPayments,
+            totalOutstanding,
+            outstandingByClient,
+            invoicesByStatus,
+          };
+        }
+
+        clearAll() {
+          this.state = { clients: [], invoices: [], payments: [] };
+          this.#persist();
+          this.emit("clients:updated", this.getClients());
+          this.emit("invoices:updated", this.getInvoices());
+          this.emit("payments:updated", this.getPayments());
+          this.emit("data:changed");
+        }
+      }
+
+      class ClientModule {
+        constructor(manager, listContainer, form, errorContainer) {
+          this.manager = manager;
+          this.listContainer = listContainer;
+          this.form = form;
+          this.errorContainer = errorContainer;
+
+          this.form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            this.#handleSubmit();
+          });
+
+          this.manager.on("clients:updated", () => this.render());
+          this.render();
+        }
+
+        #handleSubmit() {
+          const data = Object.fromEntries(new FormData(this.form).entries());
+          try {
+            this.manager.addClient(data);
+            this.errorContainer.textContent = "";
+            this.form.reset();
+            this.form.querySelector("input")?.focus();
+          } catch (error) {
+            this.errorContainer.textContent = error.message;
+          }
+        }
+
+        render() {
+          const clients = this.manager.getClients();
+          if (clients.length === 0) {
+            this.listContainer.innerHTML = '<p class="empty-state">No clients yet. Add your first client above.</p>';
+            return;
+          }
+
+          const template = document.getElementById("client-table-template");
+          const fragment = template.content.cloneNode(true);
+          const tbody = fragment.querySelector("tbody");
+
+          clients.forEach((client) => {
+            const invoices = this.manager
+              .getInvoices()
+              .filter((invoice) => invoice.clientId === client.id);
+            const outstanding = this.manager.getClientOutstanding(client.id);
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${client.name}</td>
+              <td>${client.email}</td>
+              <td>${client.phone || '<span class="muted">—</span>'}</td>
+              <td>${invoices.length}</td>
+              <td>$${outstanding.toFixed(2)}</td>
+            `;
+            tbody.append(tr);
+          });
+
+          this.listContainer.innerHTML = "";
+          this.listContainer.append(fragment);
+        }
+      }
+
+      class InvoiceModule {
+        constructor(manager, listContainer, form, errorContainer, clientSelect) {
+          this.manager = manager;
+          this.listContainer = listContainer;
+          this.form = form;
+          this.errorContainer = errorContainer;
+          this.clientSelect = clientSelect;
+
+          this.form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            this.#handleSubmit();
+          });
+
+          this.manager.on("clients:updated", () => this.#populateClients());
+          this.manager.on("invoices:updated", () => this.render());
+
+          this.#populateClients();
+          this.render();
+        }
+
+        #populateClients() {
+          const clients = this.manager.getClients();
+          this.clientSelect.innerHTML = '<option value="" disabled selected>Select client</option>';
+          clients.forEach((client) => {
+            const option = document.createElement("option");
+            option.value = client.id;
+            option.textContent = client.name;
+            this.clientSelect.append(option);
+          });
+          this.clientSelect.disabled = clients.length === 0;
+        }
+
+        #handleSubmit() {
+          const data = Object.fromEntries(new FormData(this.form).entries());
+          try {
+            this.manager.addInvoice({
+              ...data,
+              amount: data.amount,
+            });
+            this.errorContainer.textContent = "";
+            this.form.reset();
+            this.clientSelect.dispatchEvent(new Event("change"));
+          } catch (error) {
+            this.errorContainer.textContent = error.message;
+          }
+        }
+
+        render() {
+          const invoices = this.manager.getInvoices();
+          if (invoices.length === 0) {
+            this.listContainer.innerHTML = '<p class="empty-state">No invoices created yet.</p>';
+            return;
+          }
+
+          const template = document.getElementById("invoice-table-template");
+          const fragment = template.content.cloneNode(true);
+          const tbody = fragment.querySelector("tbody");
+
+          invoices
+            .map((invoice) => this.manager.getInvoiceWithClient(invoice))
+            .sort((a, b) => new Date(b.issueDate) - new Date(a.issueDate))
+            .forEach((invoice) => {
+              const outstandingBadgeClass =
+                invoice.status === "Paid"
+                  ? "success"
+                  : invoice.status === "Partial"
+                  ? "warning"
+                  : "danger";
+
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td>${invoice.number}</td>
+                <td>${invoice.clientName}</td>
+                <td>${invoice.issueDate}</td>
+                <td>${invoice.dueDate}</td>
+                <td>$${invoice.amount.toFixed(2)}</td>
+                <td>$${invoice.paid.toFixed(2)}</td>
+                <td><span class="badge ${outstandingBadgeClass}">${invoice.status}</span></td>
+              `;
+              tbody.append(tr);
+            });
+
+          this.listContainer.innerHTML = "";
+          this.listContainer.append(fragment);
+        }
+      }
+
+      class PaymentModule {
+        constructor(manager, listContainer, form, errorContainer, invoiceSelect) {
+          this.manager = manager;
+          this.listContainer = listContainer;
+          this.form = form;
+          this.errorContainer = errorContainer;
+          this.invoiceSelect = invoiceSelect;
+
+          this.form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            this.#handleSubmit();
+          });
+
+          this.manager.on("invoices:updated", () => this.#populateInvoices());
+          this.manager.on("payments:updated", () => this.render());
+
+          this.#populateInvoices();
+          this.render();
+        }
+
+        #populateInvoices() {
+          const invoices = this.manager
+            .getInvoices()
+            .map((invoice) => this.manager.getInvoiceWithClient(invoice))
+            .filter((invoice) => invoice.outstanding > 0);
+
+          this.invoiceSelect.innerHTML = '<option value="" disabled selected>Select invoice</option>';
+          invoices.forEach((invoice) => {
+            const option = document.createElement("option");
+            option.value = invoice.id;
+            option.textContent = `${invoice.number} • ${invoice.clientName} • Outstanding $${invoice.outstanding.toFixed(2)}`;
+            this.invoiceSelect.append(option);
+          });
+          this.invoiceSelect.disabled = invoices.length === 0;
+        }
+
+        #handleSubmit() {
+          const data = Object.fromEntries(new FormData(this.form).entries());
+          try {
+            this.manager.addPayment({
+              ...data,
+              amount: data.amount,
+            });
+            this.errorContainer.textContent = "";
+            this.form.reset();
+            this.invoiceSelect.dispatchEvent(new Event("change"));
+          } catch (error) {
+            this.errorContainer.textContent = error.message;
+          }
+        }
+
+        render() {
+          const payments = this.manager.getPayments();
+          if (payments.length === 0) {
+            this.listContainer.innerHTML = '<p class="empty-state">No payments recorded yet.</p>';
+            return;
+          }
+
+          const template = document.getElementById("payment-table-template");
+          const fragment = template.content.cloneNode(true);
+          const tbody = fragment.querySelector("tbody");
+
+          payments
+            .map((payment) => this.manager.getPaymentWithReferences(payment))
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .forEach((payment) => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td>${payment.invoiceNumber}</td>
+                <td>${payment.clientName}</td>
+                <td>$${payment.amount.toFixed(2)}</td>
+                <td>${payment.date}</td>
+                <td>${payment.method}</td>
+              `;
+              tbody.append(tr);
+            });
+
+          this.listContainer.innerHTML = "";
+          this.listContainer.append(fragment);
+        }
+      }
+
+      class ReportsModule {
+        constructor(manager, container) {
+          this.manager = manager;
+          this.container = container;
+
+          const render = () => this.render();
+          this.manager.on("clients:updated", render);
+          this.manager.on("invoices:updated", render);
+          this.manager.on("payments:updated", render);
+
+          this.render();
+        }
+
+        render() {
+          const reports = this.manager.getReports();
+
+          const outstandingRows = reports.outstandingByClient
+            .filter((item) => item.outstanding > 0)
+            .map(
+              (item) => `
+                <tr>
+                  <td>${item.clientName}</td>
+                  <td>$${item.outstanding.toFixed(2)}</td>
+                </tr>
+              `
+            )
+            .join("") || '<tr><td colspan="2" class="muted">No outstanding balances</td></tr>';
+
+          const statusRows = reports.invoicesByStatus
+            .map(
+              (item) => `
+                <tr>
+                  <td>${item.status}</td>
+                  <td>${item.count}</td>
+                </tr>
+              `
+            )
+            .join("");
+
+          this.container.innerHTML = `
+            <div class="totals-grid" role="list">
+              <dl class="metric" role="listitem">
+                <dt>Total Clients</dt>
+                <dd>${reports.totalClients}</dd>
+              </dl>
+              <dl class="metric" role="listitem">
+                <dt>Total Invoiced</dt>
+                <dd>$${reports.totalInvoiceAmount.toFixed(2)}</dd>
+              </dl>
+              <dl class="metric" role="listitem">
+                <dt>Total Payments</dt>
+                <dd>$${reports.totalPayments.toFixed(2)}</dd>
+              </dl>
+              <dl class="metric" role="listitem">
+                <dt>Total Outstanding</dt>
+                <dd>$${reports.totalOutstanding.toFixed(2)}</dd>
+              </dl>
+            </div>
+            <div class="grid-2" style="margin-top: 1.5rem;">
+              <div>
+                <h3>Outstanding by Client</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Client</th>
+                      <th scope="col">Outstanding</th>
+                    </tr>
+                  </thead>
+                  <tbody>${outstandingRows}</tbody>
+                </table>
+              </div>
+              <div>
+                <h3>Invoices by Status</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Status</th>
+                      <th scope="col">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>${statusRows}</tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      function initializeApp() {
+        const manager = new DataManager();
+
+        const clientModule = new ClientModule(
+          manager,
+          document.getElementById("client-list"),
+          document.getElementById("client-form"),
+          document.getElementById("client-form-error")
+        );
+
+        const invoiceModule = new InvoiceModule(
+          manager,
+          document.getElementById("invoice-list"),
+          document.getElementById("invoice-form"),
+          document.getElementById("invoice-form-error"),
+          document.getElementById("invoice-client")
+        );
+
+        const paymentModule = new PaymentModule(
+          manager,
+          document.getElementById("payment-list"),
+          document.getElementById("payment-form"),
+          document.getElementById("payment-form-error"),
+          document.getElementById("payment-invoice")
+        );
+
+        const reportsModule = new ReportsModule(
+          manager,
+          document.getElementById("reports-summary")
+        );
+
+        window.app = { manager, clientModule, invoiceModule, paymentModule, reportsModule };
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initializeApp);
+      } else {
+        initializeApp();
+      }
+    </script>
 
   </body>
 </html>
