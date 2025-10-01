@@ -1,47 +1,27 @@
-# Zantra Invoicing
+# Zantra Invoicing Dashboard
 
-This project provides a file-backed data layer (`DataManager`) and a client management module (`ClientManager`) for managing client profiles and their services. Each client record captures:
+A responsive, trade-friendly dashboard prototype for Zantra Invoicing. The interface features bold visuals, a grid-driven layout, and an onboarding wizard that guides teams through first-time setup.
 
-- Personal prefix (`Mr`, `Mrs`, or `Ms`)
-- Name and business details
-- Address and ABN
-- Contact number and email (validated and normalized)
-- A list of services with descriptions and hourly or fixed pricing information
+## Getting started
 
-## Getting Started
+1. Open `index.html` in any modern browser. No build tools are required.
+2. Interact with the primary navigation tabs to explore dashboard sections for Dashboard, Invoices, Quotes, Clients, Services, Payments, Reports, and Settings.
+3. The onboarding wizard launches automatically on first load. Use the “Restart onboarding” button in the footer or the “Launch setup” action in Settings to revisit the wizard.
 
-```bash
-npm install
+## Project structure
+
+```
+├── index.html          # Application markup and component structure
+├── scripts
+│   └── main.js         # Tab interactions and onboarding wizard logic
+└── styles
+    └── main.css        # Bold, responsive styling for the dashboard
 ```
 
-## Running Tests
+## Accessibility & responsiveness
 
-```bash
-npm test
-```
-
-## Usage
-
-```js
-import { DataManager, ClientManager } from './src/index.js';
-
-const dataManager = new DataManager('./data/clients.json');
-const clientManager = new ClientManager(dataManager);
-
-const client = await clientManager.addClient({
-  prefix: 'Ms',
-  name: 'Jamie Doe',
-  businessName: 'Jamie Doe & Co',
-  address: '100 Example Street',
-  abn: '12 345 678 901',
-  contactNumber: '0400 123 456',
-  email: 'jamie@example.com',
-  services: [
-    {
-      description: 'Consulting',
-      pricing: { type: 'hourly', amount: 150 }
-    }
-  ]
-});
-```
+- Implements an accessible tablist/tabpanel pattern with keyboard navigation support.
+- Ensures sufficient color contrast using a bold palette suited to trade operators.
+- Uses CSS Grid and fluid spacing so panels adapt across desktop, tablet, and mobile breakpoints.
+- Supports reduced motion preferences and maintains focus visibility across interactive controls.
 
