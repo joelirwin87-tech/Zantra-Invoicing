@@ -20,9 +20,7 @@ export class ClientManager {
       const cryptoApi =
         (typeof globalThis !== 'undefined' && globalThis.crypto) ||
         (typeof window !== 'undefined' && window.crypto);
-      if (cryptoApi?.randomUUID) {
-        return cryptoApi.randomUUID();
-      }
+
       if (cryptoApi?.getRandomValues) {
         const bytes = new Uint8Array(16);
         cryptoApi.getRandomValues(bytes);
@@ -33,12 +31,11 @@ export class ClientManager {
           .slice(8, 10)
           .join('')}-${hex.slice(10).join('')}`;
       }
-      console.warn('ClientManager.randomUUID: Falling back to Math.random-based identifier.');
-      return fallback;
     } catch (error) {
-      console.error('ClientManager.randomUUID failed. Falling back to Math.random-based identifier.', error);
-      return fallback;
+      console.error('ClientManager.randomUUID failed. Using fallback identifier.', error);
     }
+
+    return fallback;
   }
 
   static getAllClients() {
