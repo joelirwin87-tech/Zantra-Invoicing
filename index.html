@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zantra Payments Tracker</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <script type="module" src="js/app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-content">
+        <h1>Zantra Payments Tracker</h1>
+        <p class="tagline">Monitor invoices, payments, and GST in one workspace.</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel" aria-labelledby="invoice-form-heading">
+        <div class="panel-header">
+          <h2 id="invoice-form-heading">Create Invoice</h2>
+          <p>Capture new invoices with GST-aware totals and due dates.</p>
+        </div>
+        <form id="invoice-form" class="form-grid" novalidate>
+          <div class="form-field">
+            <label for="invoice-number">Invoice Number</label>
+            <input id="invoice-number" name="invoiceNumber" type="text" required aria-required="true" />
+          </div>
+          <div class="form-field">
+            <label for="client-name">Client</label>
+            <input id="client-name" name="clientName" type="text" required aria-required="true" />
+          </div>
+          <div class="form-field">
+            <label for="issue-date">Issue Date</label>
+            <input id="issue-date" name="issueDate" type="date" required aria-required="true" />
+          </div>
+          <div class="form-field">
+            <label for="due-date">Due Date</label>
+            <input id="due-date" name="dueDate" type="date" required aria-required="true" />
+          </div>
+          <div class="form-field">
+            <label for="invoice-amount">Amount (excl. GST)</label>
+            <input id="invoice-amount" name="amount" type="number" min="0" step="0.01" required aria-required="true" />
+          </div>
+          <div class="form-field">
+            <label for="gst-rate">GST Rate (%)</label>
+            <input id="gst-rate" name="gstRate" type="number" min="0" step="0.01" value="10" required aria-required="true" />
+          </div>
+          <div class="form-field form-field--span">
+            <label for="invoice-notes">Notes</label>
+            <textarea id="invoice-notes" name="notes" rows="2" placeholder="Internal notes or payment instructions"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Invoice</button>
+            <button type="reset" class="btn btn-secondary">Reset</button>
+          </div>
+        </form>
+        <p id="form-feedback" class="form-feedback" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="invoice-list-heading">
+        <div class="panel-header">
+          <h2 id="invoice-list-heading">Invoices</h2>
+          <p>Update payment progress and keep statuses accurate.</p>
+        </div>
+        <div class="table-container" role="region" aria-live="polite">
+          <table class="data-table" aria-describedby="invoice-list-heading">
+            <thead>
+              <tr>
+                <th scope="col">Invoice</th>
+                <th scope="col">Client</th>
+                <th scope="col">Issued</th>
+                <th scope="col">Due</th>
+                <th scope="col" class="numeric">Amount</th>
+                <th scope="col" class="numeric">GST</th>
+                <th scope="col" class="numeric">Paid</th>
+                <th scope="col" class="numeric">Outstanding</th>
+                <th scope="col">Status</th>
+                <th scope="col">Payment Date</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoice-table-body">
+              <tr>
+                <td colspan="11" class="empty-state">No invoices captured yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="reports-heading">
+        <div class="panel-header">
+          <h2 id="reports-heading">Reports</h2>
+          <p>Surface outstanding balances, monthly performance, and GST exposure.</p>
+        </div>
+        <div class="reports-grid">
+          <article class="report-card" aria-labelledby="outstanding-heading">
+            <header>
+              <h3 id="outstanding-heading">Outstanding Invoices</h3>
+              <p class="report-subtitle">Focus on invoices that still need attention.</p>
+            </header>
+            <div id="outstanding-container" class="report-content">
+              <p class="empty-state">All caught up! No outstanding invoices.</p>
+            </div>
+          </article>
+
+          <article class="report-card" aria-labelledby="paid-monthly-heading">
+            <header>
+              <h3 id="paid-monthly-heading">Paid Totals by Month</h3>
+              <p class="report-subtitle">Track realised revenue trends.</p>
+            </header>
+            <div class="report-content">
+              <canvas id="paid-monthly-chart" role="img" aria-label="Line chart of paid totals by month"></canvas>
+              <p class="empty-state" id="paid-monthly-empty">No payments recorded yet.</p>
+            </div>
+          </article>
+
+          <article class="report-card" aria-labelledby="gst-summary-heading">
+            <header>
+              <h3 id="gst-summary-heading">GST Summary</h3>
+              <p class="report-subtitle">Compare GST collected vs. outstanding.</p>
+            </header>
+            <div class="report-content">
+              <canvas id="gst-summary-chart" role="img" aria-label="Pie chart of GST summary"></canvas>
+              <dl class="gst-breakdown" id="gst-breakdown"></dl>
+              <p class="empty-state" id="gst-summary-empty">Add invoices to see GST exposure.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>&copy; <span id="current-year"></span> Zantra Finance Tools</p>
+    </footer>
+  </body>
+</html>
