@@ -1,16 +1,17 @@
 {
-  "name": "zantra-invoicing-local-manager",
+  "name": "zantra-invoicing",
   "version": "1.0.0",
-  "description": "Local-first IndexedDB data manager for clients, invoices, quotes, services, and payments.",
+  "description": "Client management module for Zantra Invoicing.",
   "type": "module",
   "main": "src/index.js",
-  "module": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  },
   "keywords": [
-    "indexeddb",
     "invoicing",
-    "local-first",
-    "data-manager",
-    "csv"
+    "client-management"
   ],
+  "author": "",
+
   "license": "MIT"
 }

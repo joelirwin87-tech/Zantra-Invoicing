@@ -1,114 +1,47 @@
-# Zantra Invoicing Local Data Manager
+# Zantra Invoicing
 
-This repository provides a lightweight, local-first data management layer built for invoicing workflows. The manager stores clients, invoices, quotes, services, and payments inside the browser using IndexedDB. It exposes production-ready CRUD helpers, soft deletion, versioning, and CSV import/export utilities while validating payloads against a JSON schema for each entity type.
+This project provides a file-backed data layer (`DataManager`) and a client management module (`ClientManager`) for managing client profiles and their services. Each client record captures:
 
-## Features
-
-- **IndexedDB storage** – resilient offline storage without external dependencies.
-- **Entity schemas** – enforced JSON schemas for all supported entities.
-- **CRUD APIs** – create, read, update, list, soft delete, and restore records.
-- **Automatic versioning** – every update increments a record version and timestamps.
-- **Soft delete model** – records gain `isDeleted` and `deletedAt` metadata while remaining recoverable.
-- **CSV import/export** – export collections to CSV and import from validated CSV snapshots.
-- **Reset & schema discovery** – helper to wipe the database and inspect entity schemas.
+- Personal prefix (`Mr`, `Mrs`, or `Ms`)
+- Name and business details
+- Address and ABN
+- Contact number and email (validated and normalized)
+- A list of services with descriptions and hourly or fixed pricing information
 
 ## Getting Started
 
-Import the module in any browser-based application. The bundle is published as standard ES modules and requires IndexedDB support.
-
-```html
-<script type="module">
-  import { LocalDataManager, ENTITY_TYPES } from './src/index.js';
-
-  async function demo() {
-    const manager = new LocalDataManager();
-    await manager.init();
-
-    const client = await manager.create(ENTITY_TYPES.CLIENTS, {
-      name: 'Acme Corp',
-      email: 'contact@acme.test',
-      phone: '+1-222-333-4444',
-    });
-
-    const invoice = await manager.create(ENTITY_TYPES.INVOICES, {
-      clientId: client.id,
-      issueDate: '2024-01-12',
-      dueDate: '2024-02-12',
-      items: [
-        { description: 'Consulting hours', quantity: 10, unitPrice: 125 },
-      ],
-      status: 'draft',
-      total: 1250,
-      currency: 'USD',
-    });
-
-    const csv = await manager.exportToCSV(ENTITY_TYPES.INVOICES);
-    console.log(csv);
-  }
-
-  demo();
-</script>
+```bash
+npm install
 ```
 
-## API Overview
+## Running Tests
 
-All methods throw descriptive errors when validation fails or when operations target missing entities.
-
-### Initialization
-
-```js
-const manager = new LocalDataManager({ dbName: 'customName', version: 1 });
-await manager.init();
+```bash
+npm test
 ```
 
-### CRUD & Soft Delete
+## Usage
 
 ```js
-// Create
-const client = await manager.create(ENTITY_TYPES.CLIENTS, payload);
+import { DataManager, ClientManager } from './src/index.js';
 
-// Read
-const record = await manager.read(ENTITY_TYPES.CLIENTS, client.id);
+const dataManager = new DataManager('./data/clients.json');
+const clientManager = new ClientManager(dataManager);
 
-// Update
-const updated = await manager.update(ENTITY_TYPES.CLIENTS, client.id, { phone: '+1 555 1234' });
-
-// List (with optional filter and deleted records)
-const clients = await manager.list(ENTITY_TYPES.CLIENTS, {
-  includeDeleted: false,
-  filter: (entry) => entry.email.endsWith('@acme.test'),
+const client = await clientManager.addClient({
+  prefix: 'Ms',
+  name: 'Jamie Doe',
+  businessName: 'Jamie Doe & Co',
+  address: '100 Example Street',
+  abn: '12 345 678 901',
+  contactNumber: '0400 123 456',
+  email: 'jamie@example.com',
+  services: [
+    {
+      description: 'Consulting',
+      pricing: { type: 'hourly', amount: 150 }
+    }
+  ]
 });
-
-// Soft delete and restore
-await manager.softDelete(ENTITY_TYPES.CLIENTS, client.id);
-await manager.restore(ENTITY_TYPES.CLIENTS, client.id);
 ```
 
-### CSV Export & Import
-
-```js
-const csv = await manager.exportToCSV(ENTITY_TYPES.PAYMENTS, { includeDeleted: true });
-await manager.importFromCSV(ENTITY_TYPES.PAYMENTS, csv, { overwrite: true });
-```
-
-### Reset Database
-
-```js
-await manager.reset();
-```
-
-## Entity Schemas
-
-Retrieve the JSON schema for a specific entity type:
-
-```js
-const schema = manager.getEntitySchema(ENTITY_TYPES.SERVICES);
-```
-
-## Testing
-
-Interact with the manager directly inside a browser application or automated tests that provide an IndexedDB implementation (e.g., `fake-indexeddb`).
-
----
-
-Crafted to serve as a robust local-first foundation for invoicing tools.

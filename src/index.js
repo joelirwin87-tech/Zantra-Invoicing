@@ -1,1 +1,3 @@
-export { LocalDataManager, ENTITY_TYPES, ENTITY_SCHEMAS } from './localDataManager.js';
+export { DataManager } from './data/DataManager.js';
+export { ClientManager } from './modules/client/ClientManager.js';
+
