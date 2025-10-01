@@ -1,17 +1,16 @@
 {
   "name": "zantra-invoicing",
   "version": "1.0.0",
-  "description": "Client management module for Zantra Invoicing.",
+  "description": "Invoicing utilities with DataManager and invoice calculations.",
   "type": "module",
-  "main": "src/index.js",
   "scripts": {
-    "test": "node --test"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
-  "keywords": [
-    "invoicing",
-    "client-management"
-  ],
+  "keywords": [],
   "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "29.7.0"
+  }
 
-  "license": "MIT"
 }
