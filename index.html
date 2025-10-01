@@ -3,13 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Zantra Invoicing – Trade Dashboard</title>
+    <title>Zantra Invoicing</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
   <body>
     <header class="app-header">
@@ -17,12 +18,12 @@
         <span class="brand__icon" aria-hidden="true">🔧</span>
         <div>
           <p class="brand__title">Zantra Invoicing</p>
-          <p class="brand__subtitle">Trade Operations Console</p>
+          <p class="brand__subtitle">Field service billing suite</p>
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn btn--ghost resume-setup-btn" id="open-wizard" type="button">
-          <span aria-hidden="true">🎯</span>
+        <button class="btn btn--ghost resume-setup-btn" type="button">
+          <span aria-hidden="true">⚙️</span>
           <span>Resume setup</span>
         </button>
         <button class="btn new-invoice-btn" type="button">
@@ -71,72 +72,33 @@
       >
         <header class="panel__header">
           <h1>Dashboard</h1>
-          <p>Real-time overview of all trade and invoicing activity.</p>
+          <p>Monitor open jobs, receivables, quote performance, and payment speed.</p>
         </header>
-        <div class="content-grid">
+        <div class="metrics-grid">
           <article class="card accent">
             <h2>Open Jobs</h2>
-            <p class="card__metric">14</p>
-            <p>Active service calls scheduled for this week.</p>
+            <p class="metric-value" data-dashboard-value="openJobs">0</p>
+            <p class="metric-description">Active quotes and unpaid invoices.</p>
           </article>
           <article class="card">
             <h2>Invoices Due</h2>
-            <p class="card__metric">$18,450</p>
-            <p>Across 9 invoices awaiting payment.</p>
+            <p class="metric-value" data-dashboard-value="invoicesDue">$0.00</p>
+            <p class="metric-description">Amount outstanding across all invoices.</p>
           </article>
           <article class="card">
             <h2>Quote Approval Rate</h2>
-            <p class="card__metric">72%</p>
-            <p>Quotes accepted over the last 30 days.</p>
+            <p class="metric-value" data-dashboard-value="quoteApproval">0%</p>
+            <p class="metric-description">Acceptance percentage for submitted quotes.</p>
           </article>
           <article class="card">
             <h2>Average Payment Time</h2>
-            <p class="card__metric">18 days</p>
-            <p>Median days from invoice issued to payment received.</p>
+            <p class="metric-value" data-dashboard-value="paymentTime">0 days</p>
+            <p class="metric-description">Average days from issue to payment.</p>
           </article>
         </div>
-        <div class="content-grid content-grid--two">
-          <article class="card stretch">
-            <h2>Upcoming Appointments</h2>
-            <ul class="timeline" aria-label="Upcoming appointments">
-              <li>
-                <p class="timeline__title">Site inspection – Skyline Plaza</p>
-                <p class="timeline__meta">Tomorrow · Assigned to A. Patel</p>
-              </li>
-              <li>
-                <p class="timeline__title">HVAC maintenance – Harbor Mall</p>
-                <p class="timeline__meta">Thu, 10:00 · Assigned to C. Rivera</p>
-              </li>
-              <li>
-                <p class="timeline__title">Lighting upgrade – West Yard</p>
-                <p class="timeline__meta">Fri, 14:30 · Assigned to S. Chen</p>
-              </li>
-            </ul>
-          </article>
-          <article class="card stretch">
-            <h2>Material Reorders</h2>
-            <div class="list">
-              <div>
-                <p class="list__title">Copper piping 3"</p>
-                <p class="list__meta">Stock: 6 · Recommended reorder</p>
-              </div>
-              <button class="btn btn--ghost" type="button">Reorder</button>
-            </div>
-            <div class="list">
-              <div>
-                <p class="list__title">Industrial sealant</p>
-                <p class="list__meta">Stock: 12 · Target: 20</p>
-              </div>
-              <button class="btn btn--ghost" type="button">Reorder</button>
-            </div>
-            <div class="list">
-              <div>
-                <p class="list__title">Galvanized bolts M12</p>
-                <p class="list__meta">Stock: 150 · Stable</p>
-              </div>
-              <button class="btn btn--ghost" type="button">Adjust</button>
-            </div>
-          </article>
+        <div class="card stretch">
+          <h2>Outstanding invoices</h2>
+          <ul class="timeline" data-dashboard-outstanding aria-live="polite"></ul>
         </div>
       </section>
 
@@ -146,65 +108,77 @@
         tabindex="0"
         aria-labelledby="tab-invoices"
         class="panel"
-        style="display: none"
+        hidden
       >
         <header class="panel__header">
-          <h1>Invoices</h1>
-          <p>Track issued invoices, statuses, and collections.</p>
+          <div>
+            <h1>Invoices</h1>
+            <p>Create and manage invoices with live GST calculations.</p>
+          </div>
           <div class="panel__actions">
-            <button class="btn" type="button">Create invoice</button>
-            <button class="btn btn--ghost" type="button">Export CSV</button>
+            <button class="btn" type="button" data-action="open-invoice-form">Create invoice</button>
           </div>
         </header>
-        <div class="table-wrapper" role="region" aria-live="polite">
+        <form id="invoice-form" class="entity-form" data-form="invoice" hidden>
+          <fieldset class="entity-form__grid">
+            <label>
+              Client
+              <select name="clientId" required></select>
+            </label>
+            <label>
+              Issue date
+              <input type="date" name="issueDate" required />
+            </label>
+            <label>
+              Due date
+              <input type="date" name="dueDate" required />
+            </label>
+          </fieldset>
+          <div class="line-items">
+            <div class="line-item-header">
+              <span>Service</span>
+              <span>Description</span>
+              <span>Qty</span>
+              <span>Unit price</span>
+              <span>GST</span>
+              <span>Total</span>
+              <span class="sr-only">Actions</span>
+            </div>
+            <div data-line-items-body></div>
+            <div class="line-item-actions">
+              <button class="btn btn--ghost" type="button" data-action="add-line">Add line item</button>
+            </div>
+          </div>
+          <label>
+            Notes
+            <textarea name="notes" rows="3" placeholder="Payment terms or notes"></textarea>
+          </label>
+          <div class="totals">
+            <div>Subtotal <span data-total="subtotal">$0.00</span></div>
+            <div>GST <span data-total="gst">$0.00</span></div>
+            <div class="totals__grand">Total <span data-total="total">$0.00</span></div>
+          </div>
+          <p class="form-feedback" data-feedback role="alert"></p>
+          <div class="form-actions">
+            <button class="btn" type="submit">Save invoice</button>
+            <button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
+          </div>
+        </form>
+        <div class="table-wrapper" data-table="invoices" role="region" aria-live="polite">
           <table>
-            <caption class="sr-only">Invoice overview</caption>
-
+            <caption class="sr-only">List of invoices</caption>
             <thead>
               <tr>
                 <th scope="col">Invoice</th>
                 <th scope="col">Client</th>
                 <th scope="col">Issued</th>
                 <th scope="col">Due</th>
-                <th scope="col">Amount</th>
+                <th scope="col">Total</th>
                 <th scope="col">Status</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>#INV-2048</td>
-                <td>Northline Logistics</td>
-                <td>Apr 4</td>
-                <td>Apr 18</td>
-                <td>$4,980</td>
-                <td><span class="status status--warning">Due soon</span></td>
-              </tr>
-              <tr>
-                <td>#INV-2047</td>
-                <td>Metro Builders</td>
-                <td>Apr 2</td>
-                <td>Apr 16</td>
-                <td>$7,450</td>
-                <td><span class="status status--danger">Overdue</span></td>
-              </tr>
-              <tr>
-                <td>#INV-2046</td>
-                <td>Summit Hospitality</td>
-                <td>Mar 30</td>
-                <td>Apr 13</td>
-                <td>$2,130</td>
-                <td><span class="status status--success">Paid</span></td>
-              </tr>
-              <tr>
-                <td>#INV-2045</td>
-                <td>Brightline Energy</td>
-                <td>Mar 28</td>
-                <td>Apr 11</td>
-                <td>$3,780</td>
-                <td><span class="status status--info">Partial</span></td>
-
-              </tr>
-            </tbody>
+            <tbody></tbody>
           </table>
         </div>
       </section>
@@ -215,43 +189,78 @@
         tabindex="0"
         aria-labelledby="tab-quotes"
         class="panel"
-        style="display: none"
+        hidden
       >
         <header class="panel__header">
-          <h1>Quotes</h1>
-          <p>Send professional estimates and convert approvals into jobs.</p>
+          <div>
+            <h1>Quotes</h1>
+            <p>Send professional quotes and track acceptance.</p>
+          </div>
+          <div class="panel__actions">
+            <button class="btn" type="button" data-action="open-quote-form">Create quote</button>
+          </div>
         </header>
-        <div class="content-grid content-grid--two">
-          <article class="card stretch">
-            <h2>Drafts</h2>
-            <ul class="timeline">
-              <li>
-                <p class="timeline__title">Retrofit – Greenline Apartments</p>
-                <p class="timeline__meta">Edited 2h ago · $9,850</p>
-              </li>
-              <li>
-                <p class="timeline__title">Emergency generator install</p>
-                <p class="timeline__meta">Edited 1d ago · $15,600</p>
-              </li>
-            </ul>
-          </article>
-          <article class="card stretch">
-            <h2>Approvals waiting</h2>
-            <div class="list">
-              <div>
-                <p class="list__title">Signal Tower – Service Contract</p>
-                <p class="list__meta">Sent Apr 2 · Follow up in 2 days</p>
-              </div>
-              <button class="btn btn--ghost" type="button">Nudge</button>
+        <form id="quote-form" class="entity-form" data-form="quote" hidden>
+          <fieldset class="entity-form__grid">
+            <label>
+              Client
+              <select name="clientId" required></select>
+            </label>
+            <label>
+              Issue date
+              <input type="date" name="issueDate" required />
+            </label>
+            <label>
+              Valid until
+              <input type="date" name="validUntil" required />
+            </label>
+          </fieldset>
+          <div class="line-items">
+            <div class="line-item-header">
+              <span>Service</span>
+              <span>Description</span>
+              <span>Qty</span>
+              <span>Unit price</span>
+              <span>GST</span>
+              <span>Total</span>
+              <span class="sr-only">Actions</span>
             </div>
-            <div class="list">
-              <div>
-                <p class="list__title">Warehouse expansion cabling</p>
-                <p class="list__meta">Sent Mar 31 · Negotiating terms</p>
-              </div>
-              <button class="btn btn--ghost" type="button">Update</button>
+            <div data-line-items-body></div>
+            <div class="line-item-actions">
+              <button class="btn btn--ghost" type="button" data-action="add-line">Add line item</button>
             </div>
-          </article>
+          </div>
+          <label>
+            Notes
+            <textarea name="notes" rows="3" placeholder="Proposal notes"></textarea>
+          </label>
+          <div class="totals">
+            <div>Subtotal <span data-total="subtotal">$0.00</span></div>
+            <div>GST <span data-total="gst">$0.00</span></div>
+            <div class="totals__grand">Total <span data-total="total">$0.00</span></div>
+          </div>
+          <p class="form-feedback" data-feedback role="alert"></p>
+          <div class="form-actions">
+            <button class="btn" type="submit">Save quote</button>
+            <button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
+          </div>
+        </form>
+        <div class="table-wrapper" data-table="quotes" role="region" aria-live="polite">
+          <table>
+            <caption class="sr-only">List of quotes</caption>
+            <thead>
+              <tr>
+                <th scope="col">Quote</th>
+                <th scope="col">Client</th>
+                <th scope="col">Issued</th>
+                <th scope="col">Valid until</th>
+                <th scope="col">Total</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </section>
 
@@ -261,49 +270,68 @@
         tabindex="0"
         aria-labelledby="tab-clients"
         class="panel"
-        style="display: none"
+        hidden
       >
         <header class="panel__header">
-          <h1>Clients</h1>
-          <p>Manage contact details, account status, and project history.</p>
-          <div class="panel__actions">
-            <button class="btn" type="button">Add client</button>
-            <button class="btn btn--ghost" type="button">Import</button>
+          <div>
+            <h1>Clients</h1>
+            <p>Maintain client records with billing prefixes.</p>
           </div>
         </header>
-        <div class="card card--split">
-          <form class="form" aria-label="Client filters">
-            <label for="client-search">Search clients</label>
-            <input id="client-search" type="search" name="client-search" placeholder="Enter client or project" />
-            <label for="client-segment">Segment</label>
-            <select id="client-segment" name="client-segment">
-              <option>All clients</option>
-              <option>Commercial</option>
-              <option>Residential</option>
-              <option>Maintenance contracts</option>
-            </select>
-            <label class="checkbox">
-              <input type="checkbox" name="client-active" checked />
-              <span>Show active projects only</span>
+        <form id="client-form" class="entity-form">
+          <input type="hidden" name="clientId" />
+          <fieldset class="entity-form__grid entity-form__grid--two">
+            <label>
+              Contact name
+              <input type="text" name="name" required />
             </label>
-          </form>
-          <div class="client-list" role="region" aria-live="polite">
-            <article>
-              <h3>Metro Builders</h3>
-              <p>Main contact: Jordan Lee · +1 (415) 555-2749</p>
-              <p class="client-status client-status--primary">Priority partner</p>
-            </article>
-            <article>
-              <h3>Northline Logistics</h3>
-              <p>Main contact: Ava Morgan · +1 (312) 555-4821</p>
-              <p class="client-status">Standard</p>
-            </article>
-            <article>
-              <h3>Summit Hospitality</h3>
-              <p>Main contact: Mateo Garcia · +1 (206) 555-9931</p>
-              <p class="client-status client-status--warning">Credit hold</p>
-            </article>
+            <label>
+              Business name
+              <input type="text" name="businessName" required />
+            </label>
+            <label>
+              Address
+              <input type="text" name="address" required />
+            </label>
+            <label>
+              ABN
+              <input type="text" name="abn" required />
+            </label>
+            <label>
+              Contact details
+              <input type="text" name="contact" required />
+            </label>
+            <label>
+              Email
+              <input type="email" name="email" />
+            </label>
+            <label>
+              Document prefix
+              <input type="text" name="prefix" maxlength="6" required />
+            </label>
+          </fieldset>
+          <p class="form-feedback" data-feedback role="alert"></p>
+          <div class="form-actions">
+            <button class="btn" type="submit">Save client</button>
+            <button class="btn btn--ghost" type="reset">Clear</button>
           </div>
+        </form>
+        <div class="table-wrapper" data-table="clients" role="region" aria-live="polite">
+          <table>
+            <caption class="sr-only">Client list</caption>
+            <thead>
+              <tr>
+                <th scope="col">Business</th>
+                <th scope="col">Contact</th>
+                <th scope="col">ABN</th>
+                <th scope="col">Phone / Notes</th>
+                <th scope="col">Prefix</th>
+                <th scope="col">Email</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </section>
 
@@ -313,51 +341,40 @@
         tabindex="0"
         aria-labelledby="tab-services"
         class="panel"
-        style="display: none"
+        hidden
       >
         <header class="panel__header">
-          <h1>Services</h1>
-          <p>Standardize the work you deliver and automate pricing.</p>
-          <div class="panel__actions">
-            <button class="btn" type="button">Add service</button>
-            <button class="btn btn--ghost" type="button">Bulk update</button>
+          <div>
+            <h1>Services</h1>
+            <p>Build a reusable catalog of services and labour rates.</p>
           </div>
         </header>
-        <div class="content-grid content-grid--two">
-          <article class="card">
-            <h2>Service catalogue</h2>
-            <ul class="timeline">
-              <li>
-                <p class="timeline__title">Preventive maintenance visit</p>
-                <p class="timeline__meta">Standard rate · 4h labor</p>
-              </li>
-              <li>
-                <p class="timeline__title">Emergency call-out</p>
-                <p class="timeline__meta">After-hours surcharge applied</p>
-              </li>
-              <li>
-                <p class="timeline__title">Design & consultancy</p>
-                <p class="timeline__meta">Custom quoting workflow</p>
-              </li>
-            </ul>
-          </article>
-          <article class="card">
-            <h2>Bundles</h2>
-            <div class="list">
-              <div>
-                <p class="list__title">Seasonal maintenance bundle</p>
-                <p class="list__meta">20% discount · Includes filter kits</p>
-              </div>
-              <button class="btn btn--ghost" type="button">Edit</button>
-            </div>
-            <div class="list">
-              <div>
-                <p class="list__title">Premium install package</p>
-                <p class="list__meta">Extended warranty & training</p>
-              </div>
-              <button class="btn btn--ghost" type="button">Edit</button>
-            </div>
-          </article>
+        <form id="service-form" class="entity-form entity-form--inline">
+          <label>
+            Description
+            <input type="text" name="description" required />
+          </label>
+          <label>
+            Unit price
+            <input type="number" name="unitPrice" min="0" step="0.01" required />
+          </label>
+          <p class="form-feedback" data-feedback role="alert"></p>
+          <div class="form-actions">
+            <button class="btn" type="submit">Add service</button>
+          </div>
+        </form>
+        <div class="table-wrapper" data-table="services" role="region" aria-live="polite">
+          <table>
+            <caption class="sr-only">Service catalog</caption>
+            <thead>
+              <tr>
+                <th scope="col">Service</th>
+                <th scope="col">Unit price</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </section>
 
@@ -367,68 +384,42 @@
         tabindex="0"
         aria-labelledby="tab-payments"
         class="panel"
-        style="display: none"
+        hidden
       >
         <header class="panel__header">
-          <h1>Payments</h1>
-          <p>Monitor transaction health and streamline collections.</p>
+          <div>
+            <h1>Payments</h1>
+            <p>Track collections and mark invoices as paid.</p>
+          </div>
         </header>
-        <div class="content-grid">
-          <article class="card">
-            <h2>Collected this month</h2>
-            <p class="card__metric">$42,210</p>
-            <p>Up 18% compared with March.</p>
-          </article>
-          <article class="card">
-            <h2>Disputes</h2>
-            <p class="card__metric">2</p>
-            <p>Both awaiting client documentation.</p>
-          </article>
-          <article class="card">
-            <h2>Payout schedule</h2>
-            <p class="card__metric">Every Friday</p>
-            <p>Next payout arrives Apr 12.</p>
-          </article>
-        </div>
-        <div class="table-wrapper" role="region" aria-live="polite">
+        <div class="table-wrapper" data-table="payments-outstanding" role="region" aria-live="polite">
+          <h2>Outstanding invoices</h2>
           <table>
-            <caption class="sr-only">Recent payments</caption>
             <thead>
               <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Client</th>
                 <th scope="col">Invoice</th>
+                <th scope="col">Client</th>
+                <th scope="col">Due</th>
                 <th scope="col">Amount</th>
-                <th scope="col">Method</th>
-                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="table-wrapper" data-table="payments-history" role="region" aria-live="polite">
+          <h2>Payment history</h2>
+          <table>
+            <thead>
               <tr>
-                <td>Apr 8</td>
-                <td>Northline Logistics</td>
-                <td>#INV-2039</td>
-                <td>$6,950</td>
-                <td>ACH</td>
-                <td><span class="status status--success">Cleared</span></td>
+                <th scope="col">Invoice</th>
+                <th scope="col">Client</th>
+                <th scope="col">Date</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Notes</th>
               </tr>
-              <tr>
-                <td>Apr 7</td>
-                <td>Metro Builders</td>
-                <td>#INV-2034</td>
-                <td>$3,120</td>
-                <td>Card</td>
-                <td><span class="status status--info">Processing</span></td>
-              </tr>
-              <tr>
-                <td>Apr 6</td>
-                <td>Summit Hospitality</td>
-                <td>#INV-2028</td>
-                <td>$1,460</td>
-                <td>Card</td>
-                <td><span class="status status--danger">Failed</span></td>
-              </tr>
-            </tbody>
+            </thead>
+            <tbody></tbody>
           </table>
         </div>
       </section>
@@ -439,46 +430,35 @@
         tabindex="0"
         aria-labelledby="tab-reports"
         class="panel"
-        style="display: none"
+        hidden
       >
         <header class="panel__header">
-          <h1>Reports</h1>
-          <p>Generate insights to drive your trade operations.</p>
-          <div class="panel__actions">
-            <button class="btn" type="button">Build report</button>
-            <button class="btn btn--ghost" type="button">Schedule</button>
+          <div>
+            <h1>Reports</h1>
+            <p>Visualise revenue trends and GST exposure.</p>
           </div>
         </header>
-        <div class="card card--split">
-          <section aria-label="Report templates" class="report-list">
-            <article>
-              <h3>Revenue by service</h3>
-              <p>Break down earnings per service line, month over month.</p>
-            </article>
-            <article>
-              <h3>Technician utilization</h3>
-              <p>Track crew allocation and overtime exposure.</p>
-            </article>
-            <article>
-              <h3>Cash flow forecast</h3>
-              <p>Combine projected invoices and expenses into a 90-day outlook.</p>
-            </article>
-          </section>
-          <form class="form" aria-label="Report filters">
-            <label for="report-range">Date range</label>
-            <select id="report-range" name="report-range">
-              <option>Last 30 days</option>
-              <option>Quarter to date</option>
-              <option>Year to date</option>
-            </select>
-            <label for="report-format">Format</label>
-            <select id="report-format" name="report-format">
-              <option>PDF</option>
-              <option>Excel</option>
-              <option>CSV</option>
-            </select>
-            <button class="btn" type="button">Generate</button>
-          </form>
+        <div class="reports-grid">
+          <div class="chart-card">
+            <canvas id="reports-chart" aria-label="Monthly invoice totals" role="img"></canvas>
+          </div>
+          <aside class="card">
+            <h2>GST summary</h2>
+            <dl class="summary-list">
+              <div>
+                <dt>Collected GST</dt>
+                <dd data-report="paid-gst">$0.00</dd>
+              </div>
+              <div>
+                <dt>Outstanding GST</dt>
+                <dd data-report="outstanding-gst">$0.00</dd>
+              </div>
+              <div>
+                <dt>Total GST liability</dt>
+                <dd data-report="total-gst">$0.00</dd>
+              </div>
+            </dl>
+          </aside>
         </div>
       </section>
 
@@ -488,77 +468,74 @@
         tabindex="0"
         aria-labelledby="tab-settings"
         class="panel"
-        style="display: none"
+        hidden
       >
         <header class="panel__header">
-          <h1>Settings</h1>
-          <p>Configure company defaults, tax rules, payment gateways, and more.</p>
+          <div>
+            <h1>Business settings</h1>
+            <p>Configure your business identity, prefixes, and GST.</p>
+          </div>
         </header>
-        <div class="content-grid content-grid--two">
-          <article class="card">
-            <h2>Company profile</h2>
-            <p>Complete your business profile to personalize documents.</p>
-            <button class="btn" type="button" data-wizard-trigger>Launch setup</button>
-          </article>
-          <article class="card">
-            <h2>Notifications</h2>
-            <form class="form" aria-label="Notification preferences">
-              <label class="checkbox">
-                <input type="checkbox" checked />
-                <span>Email me when payments fail</span>
-              </label>
-              <label class="checkbox">
-                <input type="checkbox" />
-                <span>Daily invoice digest</span>
-              </label>
-              <label class="checkbox">
-                <input type="checkbox" checked />
-                <span>Mobile push for urgent work orders</span>
-              </label>
-            </form>
-
-          </article>
-        </div>
+        <form id="settings-form" class="entity-form">
+          <fieldset class="entity-form__grid entity-form__grid--two">
+            <label>
+              Business name
+              <input type="text" name="businessName" />
+            </label>
+            <label>
+              ABN
+              <input type="text" name="abn" />
+            </label>
+            <label>
+              Contact name
+              <input type="text" name="contactName" />
+            </label>
+            <label>
+              Contact email
+              <input type="email" name="contactEmail" />
+            </label>
+            <label>
+              Contact phone
+              <input type="tel" name="contactPhone" />
+            </label>
+            <label>
+              Address
+              <input type="text" name="address" />
+            </label>
+            <label>
+              Invoice prefix
+              <input type="text" name="invoicePrefix" maxlength="6" />
+            </label>
+            <label>
+              Quote prefix
+              <input type="text" name="quotePrefix" maxlength="6" />
+            </label>
+            <label>
+              GST rate
+              <input type="number" name="gstRate" min="0" max="1" step="0.01" />
+            </label>
+          </fieldset>
+          <p class="form-feedback" data-feedback role="alert"></p>
+          <div class="form-actions">
+            <button class="btn" type="submit">Save settings</button>
+          </div>
+        </form>
       </section>
     </main>
 
-    <footer class="app-footer">
-      <p>&copy; <span id="current-year"></span> Zantra Invoicing. Built for modern trades.</p>
-      <button class="btn btn--ghost" type="button" data-wizard-trigger>Restart onboarding</button>
-    </footer>
-
-
-    <section
-      class="wizard"
-      aria-hidden="true"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="wizard-title"
-      aria-describedby="wizard-description"
-    >
-      <div class="wizard__backdrop" data-wizard-close></div>
-      <div class="wizard__dialog" role="document">
-        <header class="wizard__header">
-          <p class="wizard__badge">First-time setup</p>
-          <h2 id="wizard-title">Get Zantra ready for your crew</h2>
-          <p id="wizard-description">
-            Configure the essentials so you can invoice, quote, and collect payments without delay.
-          </p>
-        </header>
-        <div class="wizard__progress" aria-hidden="true">
-          <div class="wizard__progress-bar" id="wizard-progress"></div>
-        </div>
-        <section class="wizard__content" aria-live="polite"></section>
-        <footer class="wizard__footer">
-          <button class="btn btn--ghost" type="button" id="wizard-back">Back</button>
-          <div class="wizard__spacer"></div>
-          <button class="btn btn--ghost" type="button" id="wizard-skip">Skip</button>
-          <button class="btn" type="button" id="wizard-next">Next</button>
-        </footer>
+    <template id="line-item-template">
+      <div class="line-item-row">
+        <select data-field="service" aria-label="Service selector"></select>
+        <input type="text" data-field="description" placeholder="Description" required />
+        <input type="number" data-field="quantity" min="0" step="1" placeholder="Qty" />
+        <input type="number" data-field="unitPrice" min="0" step="0.01" placeholder="Unit price" />
+        <label class="checkbox">
+          <input type="checkbox" data-field="gst" />
+          <span>GST</span>
+        </label>
+        <span data-field="lineTotal" class="line-item-total">$0.00</span>
+        <button class="btn btn--ghost btn--small" type="button" data-action="remove-line">Remove</button>
       </div>
-    </section>
-
-    <div class="sr-only" aria-live="assertive" id="wizard-status"></div>
-
+    </template>
   </body>
 </html>
