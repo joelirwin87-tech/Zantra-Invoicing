@@ -21,11 +21,11 @@
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn btn--ghost" id="open-wizard" type="button">
+        <button class="btn btn--ghost resume-setup-btn" id="open-wizard" type="button">
           <span aria-hidden="true">🎯</span>
           <span>Resume setup</span>
         </button>
-        <button class="btn" type="button">
+        <button class="btn new-invoice-btn" type="button">
           <span aria-hidden="true">➕</span>
           <span>New invoice</span>
         </button>
@@ -34,28 +34,28 @@
 
     <nav class="primary-nav" aria-label="Primary navigation">
       <div role="tablist" aria-label="Application sections" class="tablist">
-        <button role="tab" aria-selected="true" aria-controls="panel-dashboard" id="tab-dashboard">
+        <button role="tab" aria-selected="true" aria-controls="dashboard" id="tab-dashboard" class="active">
           Dashboard
         </button>
-        <button role="tab" aria-selected="false" aria-controls="panel-invoices" id="tab-invoices">
+        <button role="tab" aria-selected="false" aria-controls="invoices" id="tab-invoices">
           Invoices
         </button>
-        <button role="tab" aria-selected="false" aria-controls="panel-quotes" id="tab-quotes">
+        <button role="tab" aria-selected="false" aria-controls="quotes" id="tab-quotes">
           Quotes
         </button>
-        <button role="tab" aria-selected="false" aria-controls="panel-clients" id="tab-clients">
+        <button role="tab" aria-selected="false" aria-controls="clients" id="tab-clients">
           Clients
         </button>
-        <button role="tab" aria-selected="false" aria-controls="panel-services" id="tab-services">
+        <button role="tab" aria-selected="false" aria-controls="services" id="tab-services">
           Services
         </button>
-        <button role="tab" aria-selected="false" aria-controls="panel-payments" id="tab-payments">
+        <button role="tab" aria-selected="false" aria-controls="payments" id="tab-payments">
           Payments
         </button>
-        <button role="tab" aria-selected="false" aria-controls="panel-reports" id="tab-reports">
+        <button role="tab" aria-selected="false" aria-controls="reports" id="tab-reports">
           Reports
         </button>
-        <button role="tab" aria-selected="false" aria-controls="panel-settings" id="tab-settings">
+        <button role="tab" aria-selected="false" aria-controls="settings" id="tab-settings">
           Settings
         </button>
       </div>
@@ -63,7 +63,7 @@
 
     <main class="layout">
       <section
-        id="panel-dashboard"
+        id="dashboard"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-dashboard"
@@ -141,11 +141,12 @@
       </section>
 
       <section
-        id="panel-invoices"
+        id="invoices"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-invoices"
         class="panel"
+        style="display: none"
       >
         <header class="panel__header">
           <h1>Invoices</h1>
@@ -209,11 +210,12 @@
       </section>
 
       <section
-        id="panel-quotes"
+        id="quotes"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-quotes"
         class="panel"
+        style="display: none"
       >
         <header class="panel__header">
           <h1>Quotes</h1>
@@ -254,11 +256,12 @@
       </section>
 
       <section
-        id="panel-clients"
+        id="clients"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-clients"
         class="panel"
+        style="display: none"
       >
         <header class="panel__header">
           <h1>Clients</h1>
@@ -305,11 +308,12 @@
       </section>
 
       <section
-        id="panel-services"
+        id="services"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-services"
         class="panel"
+        style="display: none"
       >
         <header class="panel__header">
           <h1>Services</h1>
@@ -358,11 +362,12 @@
       </section>
 
       <section
-        id="panel-payments"
+        id="payments"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-payments"
         class="panel"
+        style="display: none"
       >
         <header class="panel__header">
           <h1>Payments</h1>
@@ -429,11 +434,12 @@
       </section>
 
       <section
-        id="panel-reports"
+        id="reports"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-reports"
         class="panel"
+        style="display: none"
       >
         <header class="panel__header">
           <h1>Reports</h1>
@@ -477,11 +483,12 @@
       </section>
 
       <section
-        id="panel-settings"
+        id="settings"
         role="tabpanel"
         tabindex="0"
         aria-labelledby="tab-settings"
         class="panel"
+        style="display: none"
       >
         <header class="panel__header">
           <h1>Settings</h1>
