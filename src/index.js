@@ -1,4 +1,11 @@
-import '../styles/styles.css';
+const loadStyles = async () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  await import('../styles/styles.css');
+};
+
+loadStyles();
 import { DataManager } from './data/DataManager.js';
 import { ClientManager } from './managers/ClientManager.js';
 import { ServiceManager } from './managers/ServiceManager.js';
@@ -56,6 +63,26 @@ const toggleHidden = (element, hidden) => {
   }
 };
 
+const setDateInputValue = (input, value) => {
+  if (!input) {
+    return;
+  }
+  if (!value) {
+    input.value = '';
+    return;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    input.value = '';
+    return;
+  }
+  if ('valueAsDate' in input) {
+    input.valueAsDate = date;
+  } else {
+    input.value = date.toISOString().slice(0, 10);
+  }
+};
+
 const getLineItemTemplate = () => {
   const template = document.getElementById('line-item-template');
   if (!template) {
@@ -87,21 +114,32 @@ class LineItemEditor {
     if (!select) {
       return;
     }
+    const resolvedId = typeof selectedId === 'string' ? selectedId : '';
     clearChildren(select);
     const defaultOption = document.createElement('option');
     defaultOption.value = '';
     defaultOption.textContent = 'Custom item';
     select.appendChild(defaultOption);
 
+    let foundSelected = false;
     this.services.forEach((service) => {
       const option = document.createElement('option');
       option.value = service.id;
       option.textContent = `${service.description} (${formatCurrency(service.unitPrice)})`;
-      if (service.id === selectedId) {
+      if (service.id === resolvedId) {
         option.selected = true;
+        foundSelected = true;
       }
       select.appendChild(option);
     });
+
+    if (resolvedId && !foundSelected) {
+      const archivedOption = document.createElement('option');
+      archivedOption.value = resolvedId;
+      archivedOption.textContent = 'Archived service';
+      archivedOption.selected = true;
+      select.appendChild(archivedOption);
+    }
   }
 
   addRow(initial = {}) {
@@ -125,18 +163,19 @@ class LineItemEditor {
     if (initial.serviceId) {
       serviceSelect.value = initial.serviceId;
     }
-    if (initial.description) {
+    if (initial.description !== undefined) {
       descriptionInput.value = initial.description;
     }
-    if (initial.quantity) {
-      quantityInput.value = initial.quantity;
+    const quantityValue = Number.parseFloat(initial.quantity);
+    if (!Number.isNaN(quantityValue) && quantityValue > 0) {
+      quantityInput.value = quantityValue;
+    } else {
+      quantityInput.value = 1;
     }
-    if (initial.unitPrice) {
+    if (initial.unitPrice !== undefined && initial.unitPrice !== null && initial.unitPrice !== '') {
       priceInput.value = initial.unitPrice;
     }
-    if (initial.applyGst) {
-      gstCheckbox.checked = true;
-    }
+    gstCheckbox.checked = initial.applyGst !== undefined ? Boolean(initial.applyGst) : true;
 
     row.addEventListener('input', this.handleInputChange);
     row.addEventListener('change', this.handleInputChange);
@@ -262,7 +301,8 @@ class ZantraApp {
       this.sections.set(section.id, section);
     });
 
-    this.tabButtons = Array.from(document.querySelectorAll('.primary-nav [role="tab"]'));
+    this.tablist = document.querySelector('.tabs');
+    this.tabButtons = Array.from(document.querySelectorAll('.tabs [role="tab"]'));
     this.resumeSetupButton = document.querySelector('.resume-setup-btn');
     this.newInvoiceButton = document.querySelector('.new-invoice-btn');
     this.sectionInvoiceButtons = Array.from(document.querySelectorAll('[data-action="open-invoice-form"]'));
@@ -308,7 +348,7 @@ class ZantraApp {
   }
 
   setupNavigation() {
-    const activateSection = (sectionId) => {
+    const activateSection = (sectionId, focusTab = false) => {
       if (!sectionId || !this.sections.has(sectionId)) {
         return;
       }
@@ -316,7 +356,7 @@ class ZantraApp {
         const isActive = id === sectionId;
         section.classList.toggle('is-active', isActive);
         section.setAttribute('aria-hidden', String(!isActive));
-        section.style.display = isActive ? '' : 'none';
+        section.toggleAttribute('hidden', !isActive);
       });
       this.tabButtons.forEach((tab) => {
         const controls = tab.getAttribute('aria-controls');
@@ -324,14 +364,53 @@ class ZantraApp {
         tab.classList.toggle('active', isActive);
         tab.setAttribute('aria-selected', String(isActive));
         tab.setAttribute('tabindex', isActive ? '0' : '-1');
+        if (isActive && focusTab) {
+          tab.focus();
+        }
       });
     };
 
-    this.tabButtons.forEach((tab) => {
+    const focusTabByIndex = (index) => {
+      if (!this.tabButtons.length) {
+        return;
+      }
+      const normalizedIndex = (index + this.tabButtons.length) % this.tabButtons.length;
+      const targetTab = this.tabButtons[normalizedIndex];
+      const sectionId = targetTab?.getAttribute('aria-controls');
+      if (sectionId) {
+        activateSection(sectionId, true);
+      }
+    };
+
+    this.tabButtons.forEach((tab, index) => {
       tab.addEventListener('click', (event) => {
         event.preventDefault();
         const sectionId = tab.getAttribute('aria-controls');
-        activateSection(sectionId);
+        activateSection(sectionId, true);
+      });
+      tab.addEventListener('keydown', (event) => {
+        switch (event.key) {
+          case 'ArrowRight':
+          case 'ArrowDown':
+            event.preventDefault();
+            focusTabByIndex(index + 1);
+            break;
+          case 'ArrowLeft':
+          case 'ArrowUp':
+            event.preventDefault();
+            focusTabByIndex(index - 1);
+            break;
+          case 'Home':
+            event.preventDefault();
+            focusTabByIndex(0);
+            break;
+          case 'End':
+            event.preventDefault();
+            focusTabByIndex(this.tabButtons.length - 1);
+            break;
+          default:
+            break;
+        }
       });
     });
 
@@ -436,48 +515,170 @@ class ZantraApp {
     }
   }
 
-  toggleInvoiceForm(visible) {
+  toggleInvoiceForm(visible, invoice = null) {
     if (!this.invoiceForm) {
       return;
     }
+    const feedback = this.invoiceForm.querySelector('[data-feedback]');
+    if (feedback) {
+      feedback.textContent = '';
+    }
+    const idField = this.invoiceForm.querySelector('[name="invoiceId"]');
     if (!visible) {
       this.invoiceFormEditor.removeAll();
       this.invoiceForm.reset();
       this.updateInvoiceTotals([]);
       toggleHidden(this.invoiceForm, true);
+      if (idField) {
+        idField.value = '';
+      }
+      delete this.invoiceForm.dataset.mode;
       return;
     }
+
     toggleHidden(this.invoiceForm, false);
     this.invoiceForm.reset();
     this.invoiceFormEditor.removeAll();
-    this.invoiceFormEditor.addRow();
-    this.updateInvoiceTotals([]);
+
+    if (invoice) {
+      this.invoiceForm.dataset.mode = 'edit';
+      if (idField) {
+        idField.value = invoice.id;
+      }
+      this.populateInvoiceForm(invoice);
+    } else {
+      this.invoiceForm.dataset.mode = 'create';
+      if (idField) {
+        idField.value = '';
+      }
+      this.invoiceFormEditor.addRow();
+      const issueInput = this.invoiceForm.querySelector('[name="issueDate"]');
+      const dueInput = this.invoiceForm.querySelector('[name="dueDate"]');
+      setDateInputValue(issueInput, new Date());
+      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      setDateInputValue(dueInput, dueDate);
+      this.updateInvoiceTotals(this.invoiceFormEditor.getItems());
+    }
+
     const clientSelect = this.invoiceForm.querySelector('[name="clientId"]');
     if (clientSelect) {
+      clientSelect.value = invoice ? invoice.clientId : '';
       clientSelect.focus();
     }
+
+    this.invoiceForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  toggleQuoteForm(visible) {
+  populateInvoiceForm(invoice) {
+    if (!invoice || !this.invoiceForm) {
+      return;
+    }
+    const issueInput = this.invoiceForm.querySelector('[name="issueDate"]');
+    const dueInput = this.invoiceForm.querySelector('[name="dueDate"]');
+    const notesInput = this.invoiceForm.querySelector('[name="notes"]');
+    setDateInputValue(issueInput, invoice.issueDate);
+    setDateInputValue(dueInput, invoice.dueDate);
+    if (notesInput) {
+      notesInput.value = invoice.notes || '';
+    }
+
+    if (Array.isArray(invoice.lineItems) && invoice.lineItems.length) {
+      invoice.lineItems.forEach((item) => {
+        this.invoiceFormEditor.addRow({
+          serviceId: item.serviceId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          applyGst: item.applyGst
+        });
+      });
+    } else {
+      this.invoiceFormEditor.addRow();
+    }
+    this.updateInvoiceTotals(invoice.lineItems || []);
+  }
+
+  toggleQuoteForm(visible, quote = null) {
     if (!this.quoteForm) {
       return;
     }
+    const feedback = this.quoteForm.querySelector('[data-feedback]');
+    if (feedback) {
+      feedback.textContent = '';
+    }
+    const idField = this.quoteForm.querySelector('[name="quoteId"]');
     if (!visible) {
       this.quoteFormEditor.removeAll();
       this.quoteForm.reset();
       this.updateQuoteTotals([]);
       toggleHidden(this.quoteForm, true);
+      if (idField) {
+        idField.value = '';
+      }
+      delete this.quoteForm.dataset.mode;
       return;
     }
+
     toggleHidden(this.quoteForm, false);
     this.quoteForm.reset();
     this.quoteFormEditor.removeAll();
-    this.quoteFormEditor.addRow();
-    this.updateQuoteTotals([]);
+
+    if (quote) {
+      this.quoteForm.dataset.mode = 'edit';
+      if (idField) {
+        idField.value = quote.id;
+      }
+      this.populateQuoteForm(quote);
+    } else {
+      this.quoteForm.dataset.mode = 'create';
+      if (idField) {
+        idField.value = '';
+      }
+      this.quoteFormEditor.addRow();
+      const issueInput = this.quoteForm.querySelector('[name="issueDate"]');
+      const validInput = this.quoteForm.querySelector('[name="validUntil"]');
+      setDateInputValue(issueInput, new Date());
+      const validDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      setDateInputValue(validInput, validDate);
+      this.updateQuoteTotals(this.quoteFormEditor.getItems());
+    }
+
     const clientSelect = this.quoteForm.querySelector('[name="clientId"]');
     if (clientSelect) {
+      clientSelect.value = quote ? quote.clientId : '';
       clientSelect.focus();
     }
+
+    this.quoteForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  populateQuoteForm(quote) {
+    if (!quote || !this.quoteForm) {
+      return;
+    }
+    const issueInput = this.quoteForm.querySelector('[name="issueDate"]');
+    const validInput = this.quoteForm.querySelector('[name="validUntil"]');
+    const notesInput = this.quoteForm.querySelector('[name="notes"]');
+    setDateInputValue(issueInput, quote.issueDate);
+    setDateInputValue(validInput, quote.validUntil);
+    if (notesInput) {
+      notesInput.value = quote.notes || '';
+    }
+
+    if (Array.isArray(quote.lineItems) && quote.lineItems.length) {
+      quote.lineItems.forEach((item) => {
+        this.quoteFormEditor.addRow({
+          serviceId: item.serviceId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          applyGst: item.applyGst
+        });
+      });
+    } else {
+      this.quoteFormEditor.addRow();
+    }
+    this.updateQuoteTotals(quote.lineItems || []);
   }
 
   updateInvoiceTotals(items) {
@@ -510,16 +711,6 @@ class ZantraApp {
       });
     }
 
-    const issueDateInput = this.invoiceForm.querySelector('[name="issueDate"]');
-    if (issueDateInput) {
-      issueDateInput.valueAsDate = new Date();
-    }
-    const dueDateInput = this.invoiceForm.querySelector('[name="dueDate"]');
-    if (dueDateInput) {
-      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-      dueDateInput.valueAsDate = dueDate;
-    }
-
     if (!this.invoiceFormInitialized) {
       this.invoiceForm.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -549,19 +740,29 @@ class ZantraApp {
         .sort((a, b) => Date.parse(b.issueDate) - Date.parse(a.issueDate))
         .forEach((invoice) => {
           const row = document.createElement('tr');
+          const statusMarkup =
+            invoice.status === 'paid'
+              ? `<span class="status-pill status-pill--success">Paid</span>`
+              : `<span class="status-pill status-pill--warning">Unpaid</span>`;
+          const actions = [
+            `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${invoice.id}">Edit</button>`,
+            invoice.status !== 'paid'
+              ? `<button class="btn btn--sm btn--primary" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
+              : '',
+            `<button class="btn btn--sm btn--destructive" data-action="delete" data-id="${invoice.id}">Delete</button>`
+          ]
+            .filter(Boolean)
+            .join('');
+          const paidMeta = invoice.status === 'paid' && invoice.paidAt ? `<div class="status-meta">Paid ${formatDate(invoice.paidAt)}</div>` : '';
           row.innerHTML = `
             <td>${invoice.number}</td>
             <td>${invoice.clientName}</td>
             <td>${formatDate(invoice.issueDate)}</td>
             <td>${formatDate(invoice.dueDate)}</td>
             <td>${formatCurrency(invoice.total)}</td>
-            <td>${invoice.status === 'paid' ? 'Paid' : 'Unpaid'}</td>
-            <td>
-              ${
-                invoice.status === 'paid'
-                  ? `<span class="status-pill status-pill--success">Paid ${formatDate(invoice.paidAt)}</span>`
-                  : `<button class="btn btn--sm btn--primary" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
-              }
+            <td>${statusMarkup}${paidMeta}</td>
+            <td class="text-right">
+              <div class="table-actions">${actions}</div>
             </td>
           `;
           this.invoiceListBody.appendChild(row);
@@ -573,6 +774,9 @@ class ZantraApp {
           const invoiceId = button.getAttribute('data-id');
           try {
             const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+            if (!invoice) {
+              return;
+            }
             PaymentManager.recordPayment(invoiceId, invoice.total, new Date());
             this.refreshData();
             this.renderAll();
@@ -581,11 +785,35 @@ class ZantraApp {
           }
         });
       });
+
+      this.invoiceListBody.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (!invoice) {
+            return;
+          }
+          this.activateSection('invoices');
+          this.toggleInvoiceForm(true, invoice);
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="delete"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          InvoiceManager.remove(invoiceId);
+          this.refreshData();
+          this.renderAll();
+        });
+      });
     }
   }
 
   handleInvoiceSubmit() {
     const form = this.invoiceForm;
+    const invoiceId = form.querySelector('[name="invoiceId"]').value;
     const clientId = form.querySelector('[name="clientId"]').value;
     const issueDate = form.querySelector('[name="issueDate"]').value;
     const dueDate = form.querySelector('[name="dueDate"]').value;
@@ -604,13 +832,23 @@ class ZantraApp {
       if (!items.length) {
         throw new Error('Add at least one line item before saving.');
       }
-      InvoiceManager.create({
-        clientId,
-        issueDate,
-        dueDate,
-        notes,
-        lineItems: items
-      });
+      if (invoiceId) {
+        InvoiceManager.update(invoiceId, {
+          clientId,
+          issueDate,
+          dueDate,
+          notes,
+          lineItems: items
+        });
+      } else {
+        InvoiceManager.create({
+          clientId,
+          issueDate,
+          dueDate,
+          notes,
+          lineItems: items
+        });
+      }
       this.toggleInvoiceForm(false);
       this.refreshData();
       this.renderAll();
@@ -652,16 +890,6 @@ class ZantraApp {
       });
     }
 
-    const quoteIssueInput = this.quoteForm.querySelector('[name="issueDate"]');
-    if (quoteIssueInput) {
-      quoteIssueInput.valueAsDate = new Date();
-    }
-    const validUntilInput = this.quoteForm.querySelector('[name="validUntil"]');
-    if (validUntilInput) {
-      const date = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-      validUntilInput.valueAsDate = date;
-    }
-
     if (!this.quoteFormInitialized) {
       this.quoteForm.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -691,22 +919,37 @@ class ZantraApp {
         .sort((a, b) => Date.parse(b.issueDate) - Date.parse(a.issueDate))
         .forEach((quote) => {
           const row = document.createElement('tr');
+          const statusMarkup =
+            quote.status === 'accepted'
+              ? `<span class="status-pill status-pill--success">Accepted</span>`
+              : quote.status === 'declined'
+              ? `<span class="status-pill status-pill--muted">Declined</span>`
+              : `<span class="status-pill status-pill--warning">Pending</span>`;
+          const actions = [
+            `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${quote.id}">Edit</button>`,
+            quote.status === 'pending'
+              ? `<button class="btn btn--sm btn--primary" data-action="accept" data-id="${quote.id}">Accept</button>`
+              : '',
+            quote.status === 'pending'
+              ? `<button class="btn btn--sm btn--secondary" data-action="decline" data-id="${quote.id}">Decline</button>`
+              : '',
+            `<button class="btn btn--sm btn--destructive" data-action="delete" data-id="${quote.id}">Delete</button>`
+          ]
+            .filter(Boolean)
+            .join('');
+          const decisionMeta =
+            quote.status !== 'pending' && quote.decisionDate
+              ? `<div class="status-meta">${formatDate(quote.decisionDate)}</div>`
+              : '';
           row.innerHTML = `
             <td>${quote.number}</td>
             <td>${quote.clientName}</td>
             <td>${formatDate(quote.issueDate)}</td>
             <td>${formatDate(quote.validUntil)}</td>
             <td>${formatCurrency(quote.total)}</td>
-            <td>${quote.status}</td>
-            <td>
-              ${
-                quote.status === 'pending'
-                  ? `<button class="btn btn--sm btn--primary" data-action="accept" data-id="${quote.id}">Accept</button>
-                     <button class="btn btn--sm btn--destructive" data-action="decline" data-id="${quote.id}">Decline</button>`
-                  : quote.status === 'accepted'
-                  ? `<span class="status-pill status-pill--success">Accepted</span>`
-                  : `<span class="status-pill status-pill--muted">Declined</span>`
-              }
+            <td>${statusMarkup}${decisionMeta}</td>
+            <td class="text-right">
+              <div class="table-actions">${actions}</div>
             </td>
           `;
           this.quoteListBody.appendChild(row);
@@ -731,11 +974,35 @@ class ZantraApp {
           this.renderAll();
         });
       });
+
+      this.quoteListBody.querySelectorAll('[data-action="edit"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const quoteId = button.getAttribute('data-id');
+          const quote = this.state.quotes.find((item) => item.id === quoteId);
+          if (!quote) {
+            return;
+          }
+          this.activateSection('quotes');
+          this.toggleQuoteForm(true, quote);
+        });
+      });
+
+      this.quoteListBody.querySelectorAll('[data-action="delete"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const quoteId = button.getAttribute('data-id');
+          QuoteManager.remove(quoteId);
+          this.refreshData();
+          this.renderAll();
+        });
+      });
     }
   }
 
   handleQuoteSubmit() {
     const form = this.quoteForm;
+    const quoteId = form.querySelector('[name="quoteId"]').value;
     const clientId = form.querySelector('[name="clientId"]').value;
     const issueDate = form.querySelector('[name="issueDate"]').value;
     const validUntil = form.querySelector('[name="validUntil"]').value;
@@ -752,13 +1019,23 @@ class ZantraApp {
       if (!items.length) {
         throw new Error('Add at least one line item before saving.');
       }
-      QuoteManager.create({
-        clientId,
-        issueDate,
-        validUntil,
-        notes,
-        lineItems: items
-      });
+      if (quoteId) {
+        QuoteManager.update(quoteId, {
+          clientId,
+          issueDate,
+          validUntil,
+          notes,
+          lineItems: items
+        });
+      } else {
+        QuoteManager.create({
+          clientId,
+          issueDate,
+          validUntil,
+          notes,
+          lineItems: items
+        });
+      }
       this.toggleQuoteForm(false);
       this.refreshData();
       this.renderAll();

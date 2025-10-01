@@ -131,6 +131,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-dashboard"
+            aria-hidden="false"
             class="section is-active"
           >
             <header class="section__header">
@@ -212,6 +213,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-invoices"
+            aria-hidden="true"
             class="section"
             hidden
           >
@@ -227,6 +229,7 @@
               </div>
             </header>
             <form id="invoice-form" class="form card" data-form="invoice" hidden>
+              <input type="hidden" name="invoiceId" />
               <div class="form-layout">
                 <div class="form-layout__main">
                   <div class="row row--g16 form-row">
@@ -316,7 +319,7 @@
               </div>
               <p class="form-feedback" data-feedback role="alert"></p>
               <div class="form-actions">
-                <button class="btn btn--primary btn--lg" type="submit">Save invoice</button>
+                <button class="btn btn--primary btn--lg save-invoice-btn" type="submit">Save invoice</button>
                 <button class="btn btn--secondary btn--lg" type="button" data-action="cancel">Cancel</button>
               </div>
             </form>
@@ -353,6 +356,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-quotes"
+            aria-hidden="true"
             class="section"
             hidden
           >
@@ -368,6 +372,7 @@
               </div>
             </header>
             <form id="quote-form" class="form card" data-form="quote" hidden>
+              <input type="hidden" name="quoteId" />
               <div class="form-layout">
                 <div class="form-layout__main">
                   <div class="row row--g16 form-row">
@@ -457,7 +462,7 @@
               </div>
               <p class="form-feedback" data-feedback role="alert"></p>
               <div class="form-actions">
-                <button class="btn btn--primary btn--lg" type="submit">Save quote</button>
+                <button class="btn btn--primary btn--lg save-quote-btn" type="submit">Save quote</button>
                 <button class="btn btn--secondary btn--lg" type="button" data-action="cancel">Cancel</button>
               </div>
             </form>
@@ -494,6 +499,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-clients"
+            aria-hidden="true"
             class="section"
             hidden
           >
@@ -588,6 +594,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-services"
+            aria-hidden="true"
             class="section"
             hidden
           >
@@ -663,6 +670,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-payments"
+            aria-hidden="true"
             class="section"
             hidden
           >
@@ -743,6 +751,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-reports"
+            aria-hidden="true"
             class="section"
             hidden
           >
@@ -792,6 +801,7 @@
             role="tabpanel"
             tabindex="0"
             aria-labelledby="tab-settings"
+            aria-hidden="true"
             class="section"
             hidden
           >
@@ -842,7 +852,7 @@
               </div>
               <p class="form-feedback" data-feedback role="alert"></p>
               <div class="form-actions form-actions--persistent">
-                <button class="btn btn--primary btn--lg" type="submit">Save settings</button>
+                <button class="btn btn--primary btn--lg save-settings-btn" type="submit">Save settings</button>
               </div>
             </form>
           </section>

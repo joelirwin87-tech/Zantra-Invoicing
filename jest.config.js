@@ -3,5 +3,9 @@ export default {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
-  moduleFileExtensions: ['js', 'json'],
+  testMatch: ['**/tests/**/*.test.[jm]js'],
+  moduleFileExtensions: ['js', 'mjs', 'json'],
+  moduleNameMapper: {
+    '\\.(css)$': '<rootDir>/tests/styleMock.mjs'
+  }
 };
