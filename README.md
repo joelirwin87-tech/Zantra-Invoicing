@@ -24,3 +24,4 @@ A responsive, trade-friendly dashboard prototype for Zantra Invoicing. The inter
 - Ensures sufficient color contrast using a bold palette suited to trade operators.
 - Uses CSS Grid and fluid spacing so panels adapt across desktop, tablet, and mobile breakpoints.
 - Supports reduced motion preferences and maintains focus visibility across interactive controls.
+
