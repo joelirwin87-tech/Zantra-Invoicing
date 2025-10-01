@@ -10,556 +10,880 @@
       href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="./styles/styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
   <body>
-    <header class="app-header" role="banner">
-      <div class="header__inner container">
-        <div class="brand">
-          <span class="brand__icon" aria-hidden="true">🔧</span>
-          <div class="brand__text">
-            <p class="brand__title">Zantra Invoicing</p>
-            <p class="brand__subtitle">Field service billing suite</p>
-          </div>
-        </div>
-        <div class="header-actions">
-          <button class="btn btn--ghost resume-setup-btn" type="button">
-            <span aria-hidden="true">⚙️</span>
-            <span>Resume setup</span>
-          </button>
-          <button class="btn new-invoice-btn" type="button">
-            <span aria-hidden="true">➕</span>
-            <span>New invoice</span>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <nav class="primary-nav" aria-label="Primary navigation">
-      <div class="container">
-        <div role="tablist" aria-label="Application sections" class="tablist">
-          <button role="tab" aria-selected="true" aria-controls="dashboard" id="tab-dashboard" class="active">
-            Dashboard
-          </button>
-          <button role="tab" aria-selected="false" aria-controls="invoices" id="tab-invoices">
-            Invoices
-        </button>
-        <button role="tab" aria-selected="false" aria-controls="quotes" id="tab-quotes">
-          Quotes
-        </button>
-        <button role="tab" aria-selected="false" aria-controls="clients" id="tab-clients">
-          Clients
-        </button>
-        <button role="tab" aria-selected="false" aria-controls="services" id="tab-services">
-          Services
-        </button>
-        <button role="tab" aria-selected="false" aria-controls="payments" id="tab-payments">
-          Payments
-        </button>
-        <button role="tab" aria-selected="false" aria-controls="reports" id="tab-reports">
-          Reports
-        </button>
-          <button role="tab" aria-selected="false" aria-controls="settings" id="tab-settings">
-            Settings
-          </button>
-        </div>
-      </div>
-    </nav>
-
-    <main class="layout container">
-      <section
-        id="dashboard"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-dashboard"
-        class="panel is-active"
-      >
-        <header class="panel__header">
-          <h1>Dashboard</h1>
-          <p>Monitor open jobs, receivables, quote performance, and payment speed.</p>
-        </header>
-        <div class="metrics-grid">
-          <article class="card accent">
-            <h2>Open Jobs</h2>
-            <p class="metric-value" data-dashboard-value="openJobs">0</p>
-            <p class="metric-description">Active quotes and unpaid invoices.</p>
-          </article>
-          <article class="card">
-            <h2>Invoices Due</h2>
-            <p class="metric-value" data-dashboard-value="invoicesDue">$0.00</p>
-            <p class="metric-description">Amount outstanding across all invoices.</p>
-          </article>
-          <article class="card">
-            <h2>Quote Approval Rate</h2>
-            <p class="metric-value" data-dashboard-value="quoteApproval">0%</p>
-            <p class="metric-description">Acceptance percentage for submitted quotes.</p>
-          </article>
-          <article class="card">
-            <h2>Average Payment Time</h2>
-            <p class="metric-value" data-dashboard-value="paymentTime">0 days</p>
-            <p class="metric-description">Average days from issue to payment.</p>
-          </article>
-          <article class="card">
-            <h2>Upcoming Appointments</h2>
-            <p class="metric-value" data-dashboard-value="upcomingAppointments">0</p>
-            <p class="metric-description">Scheduled site visits for the next 7 days.</p>
-          </article>
-          <article class="card">
-            <h2>Material Reorders</h2>
-            <p class="metric-value" data-dashboard-value="materialReorders">0</p>
-            <p class="metric-description">Jobs awaiting material replenishment.</p>
-          </article>
-        </div>
-        <div class="card stretch">
-          <h2>Outstanding invoices</h2>
-          <ul class="timeline" data-dashboard-outstanding aria-live="polite"></ul>
-        </div>
-      </section>
-
-      <section
-        id="invoices"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-invoices"
-        class="panel"
-        hidden
-      >
-        <header class="panel__header">
-          <div>
-            <h1>Invoices</h1>
-            <p>Create and manage invoices with live GST calculations.</p>
-          </div>
-          <div class="panel__actions">
-            <button class="btn" type="button" data-action="open-invoice-form">Create invoice</button>
-          </div>
-        </header>
-        <form id="invoice-form" class="entity-form" data-form="invoice" hidden>
-          <fieldset class="entity-form__grid">
-            <label>
-              Client
-              <select name="clientId" required></select>
-            </label>
-            <label>
-              Issue date
-              <input type="date" name="issueDate" required />
-            </label>
-            <label>
-              Due date
-              <input type="date" name="dueDate" required />
-            </label>
-          </fieldset>
-          <div class="line-items">
-            <div class="line-item-header">
-              <span>Service</span>
-              <span>Description</span>
-              <span>Qty</span>
-              <span>Unit price</span>
-              <span>GST</span>
-              <span>Total</span>
-              <span class="sr-only">Actions</span>
-            </div>
-            <div data-line-items-body></div>
-            <div class="line-item-actions">
-              <button class="btn btn--ghost" type="button" data-action="add-line">Add line item</button>
+    <div class="app-shell">
+      <header class="top-bar" role="banner">
+        <div class="top-bar__inner container">
+          <div class="brand" aria-label="Zantra Invoicing">
+            <span class="brand__mark" aria-hidden="true">🔧</span>
+            <div class="brand__meta">
+              <span class="brand__name">Zantra Invoicing</span>
+              <span class="brand__tagline">Field service billing suite</span>
             </div>
           </div>
-          <label>
-            Notes
-            <textarea name="notes" rows="3" placeholder="Payment terms or notes"></textarea>
-          </label>
-          <div class="totals" aria-live="polite">
-            <div>Subtotal <span data-total="subtotal">$0.00</span></div>
-            <div>GST <span data-total="gst">$0.00</span></div>
-            <div class="totals__grand">Total <span data-total="total">$0.00</span></div>
+          <div class="top-bar__actions">
+            <button class="btn btn--secondary btn--md resume-setup-btn" type="button">
+              <span class="btn__icon" aria-hidden="true">⚙️</span>
+              <span>Resume setup</span>
+            </button>
+            <button class="btn btn--primary btn--md new-invoice-btn" type="button">
+              <span class="btn__icon" aria-hidden="true">➕</span>
+              <span>New invoice</span>
+            </button>
           </div>
-          <p class="form-feedback" data-feedback role="alert"></p>
-          <div class="form-actions">
-            <button class="btn" type="submit">Save invoice</button>
-            <button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
-          </div>
-        </form>
-        <div class="table-wrapper" data-table="invoices" role="region" aria-live="polite">
-          <table>
-            <caption class="sr-only">List of invoices</caption>
-            <thead>
-              <tr>
-                <th scope="col">Invoice</th>
-                <th scope="col">Client</th>
-                <th scope="col">Issued</th>
-                <th scope="col">Due</th>
-                <th scope="col">Total</th>
-                <th scope="col">Status</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
         </div>
-      </section>
+      </header>
 
-      <section
-        id="quotes"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-quotes"
-        class="panel"
-        hidden
-      >
-        <header class="panel__header">
-          <div>
-            <h1>Quotes</h1>
-            <p>Send professional quotes and track acceptance.</p>
+      <nav class="app-nav" aria-label="Primary navigation">
+        <div class="container">
+          <div role="tablist" aria-label="Application sections" class="tabs">
+            <button
+              role="tab"
+              aria-selected="true"
+              aria-controls="dashboard"
+              id="tab-dashboard"
+              class="tab active"
+              tabindex="0"
+            >
+              Dashboard
+            </button>
+            <button
+              role="tab"
+              aria-selected="false"
+              aria-controls="invoices"
+              id="tab-invoices"
+              class="tab"
+              tabindex="-1"
+            >
+              Invoices
+            </button>
+            <button
+              role="tab"
+              aria-selected="false"
+              aria-controls="quotes"
+              id="tab-quotes"
+              class="tab"
+              tabindex="-1"
+            >
+              Quotes
+            </button>
+            <button
+              role="tab"
+              aria-selected="false"
+              aria-controls="clients"
+              id="tab-clients"
+              class="tab"
+              tabindex="-1"
+            >
+              Clients
+            </button>
+            <button
+              role="tab"
+              aria-selected="false"
+              aria-controls="services"
+              id="tab-services"
+              class="tab"
+              tabindex="-1"
+            >
+              Services
+            </button>
+            <button
+              role="tab"
+              aria-selected="false"
+              aria-controls="payments"
+              id="tab-payments"
+              class="tab"
+              tabindex="-1"
+            >
+              Payments
+            </button>
+            <button
+              role="tab"
+              aria-selected="false"
+              aria-controls="reports"
+              id="tab-reports"
+              class="tab"
+              tabindex="-1"
+            >
+              Reports
+            </button>
+            <button
+              role="tab"
+              aria-selected="false"
+              aria-controls="settings"
+              id="tab-settings"
+              class="tab"
+              tabindex="-1"
+            >
+              Settings
+            </button>
           </div>
-          <div class="panel__actions">
-            <button class="btn" type="button" data-action="open-quote-form">Create quote</button>
-          </div>
-        </header>
-        <form id="quote-form" class="entity-form" data-form="quote" hidden>
-          <fieldset class="entity-form__grid">
-            <label>
-              Client
-              <select name="clientId" required></select>
-            </label>
-            <label>
-              Issue date
-              <input type="date" name="issueDate" required />
-            </label>
-            <label>
-              Valid until
-              <input type="date" name="validUntil" required />
-            </label>
-          </fieldset>
-          <div class="line-items">
-            <div class="line-item-header">
-              <span>Service</span>
-              <span>Description</span>
-              <span>Qty</span>
-              <span>Unit price</span>
-              <span>GST</span>
-              <span>Total</span>
-              <span class="sr-only">Actions</span>
-            </div>
-            <div data-line-items-body></div>
-            <div class="line-item-actions">
-              <button class="btn btn--ghost" type="button" data-action="add-line">Add line item</button>
-            </div>
-          </div>
-          <label>
-            Notes
-            <textarea name="notes" rows="3" placeholder="Proposal notes"></textarea>
-          </label>
-          <div class="totals">
-            <div>Subtotal <span data-total="subtotal">$0.00</span></div>
-            <div>GST <span data-total="gst">$0.00</span></div>
-            <div class="totals__grand">Total <span data-total="total">$0.00</span></div>
-          </div>
-          <p class="form-feedback" data-feedback role="alert"></p>
-          <div class="form-actions">
-            <button class="btn" type="submit">Save quote</button>
-            <button class="btn btn--ghost" type="button" data-action="cancel">Cancel</button>
-          </div>
-        </form>
-        <div class="table-wrapper" data-table="quotes" role="region" aria-live="polite">
-          <table>
-            <caption class="sr-only">List of quotes</caption>
-            <thead>
-              <tr>
-                <th scope="col">Quote</th>
-                <th scope="col">Client</th>
-                <th scope="col">Issued</th>
-                <th scope="col">Valid until</th>
-                <th scope="col">Total</th>
-                <th scope="col">Status</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
         </div>
-      </section>
+      </nav>
 
-      <section
-        id="clients"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-clients"
-        class="panel"
-        hidden
-      >
-        <header class="panel__header">
-          <div>
-            <h1>Clients</h1>
-            <p>Maintain client records with billing prefixes.</p>
-          </div>
-          <div class="panel__actions">
-            <a class="btn" href="#client-form">Add client</a>
-          </div>
-        </header>
-        <form id="client-form" class="entity-form">
-          <input type="hidden" name="clientId" />
-          <fieldset class="entity-form__grid entity-form__grid--two">
-            <label>
-              Contact name
-              <input type="text" name="name" required />
-            </label>
-            <label>
-              Business name
-              <input type="text" name="businessName" required />
-            </label>
-            <label>
-              Address
-              <input type="text" name="address" required />
-            </label>
-            <label>
-              ABN
-              <input type="text" name="abn" required />
-            </label>
-            <label>
-              Contact details
-              <input type="text" name="contact" required />
-            </label>
-            <label>
-              Email
-              <input type="email" name="email" />
-            </label>
-            <label>
-              Document prefix
-              <input type="text" name="prefix" maxlength="6" required />
-            </label>
-          </fieldset>
-          <p class="form-feedback" data-feedback role="alert"></p>
-          <div class="form-actions">
-            <button class="btn" type="submit">Save client</button>
-            <button class="btn btn--ghost" type="reset">Clear</button>
-          </div>
-        </form>
-        <div class="table-wrapper" data-table="clients" role="region" aria-live="polite">
-          <table>
-            <caption class="sr-only">Client list</caption>
-            <thead>
-              <tr>
-                <th scope="col">Business</th>
-                <th scope="col">Contact</th>
-                <th scope="col">ABN</th>
-                <th scope="col">Phone / Notes</th>
-                <th scope="col">Prefix</th>
-                <th scope="col">Email</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section
-        id="services"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-services"
-        class="panel"
-        hidden
-      >
-        <header class="panel__header">
-          <div>
-            <h1>Services</h1>
-            <p>Build a reusable catalog of services and labour rates.</p>
-          </div>
-          <div class="panel__actions">
-            <a class="btn" href="#service-form">Add service</a>
-          </div>
-        </header>
-        <form id="service-form" class="entity-form entity-form--inline">
-          <label>
-            Description
-            <input type="text" name="description" required />
-          </label>
-          <label>
-            Unit price
-            <input type="number" name="unitPrice" min="0" step="0.01" required />
-          </label>
-          <p class="form-feedback" data-feedback role="alert"></p>
-          <div class="form-actions">
-            <button class="btn" type="submit">Add service</button>
-          </div>
-        </form>
-        <div class="table-wrapper" data-table="services" role="region" aria-live="polite">
-          <table>
-            <caption class="sr-only">Service catalog</caption>
-            <thead>
-              <tr>
-                <th scope="col">Service</th>
-                <th scope="col">Unit price</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section
-        id="payments"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-payments"
-        class="panel"
-        hidden
-      >
-        <header class="panel__header">
-          <div>
-            <h1>Payments</h1>
-            <p>Track collections and mark invoices as paid.</p>
-          </div>
-          <div class="panel__actions">
-            <button class="btn" type="button" data-action="open-payment-form">Add payment</button>
-          </div>
-        </header>
-        <div class="table-wrapper" data-table="payments-outstanding" role="region" aria-live="polite">
-          <h2>Outstanding invoices</h2>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Invoice</th>
-                <th scope="col">Client</th>
-                <th scope="col">Due</th>
-                <th scope="col">Amount</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div class="table-wrapper" data-table="payments-history" role="region" aria-live="polite">
-          <h2>Payment history</h2>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Invoice</th>
-                <th scope="col">Client</th>
-                <th scope="col">Date</th>
-                <th scope="col">Amount</th>
-                <th scope="col">Notes</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section
-        id="reports"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-reports"
-        class="panel"
-        hidden
-      >
-        <header class="panel__header">
-          <div>
-            <h1>Reports</h1>
-            <p>Visualise revenue trends and GST exposure.</p>
-          </div>
-        </header>
-        <div class="reports-grid">
-          <div class="chart-card">
-            <canvas id="reports-chart" aria-label="Monthly invoice totals" role="img"></canvas>
-          </div>
-          <aside class="card">
-            <h2>GST summary</h2>
-            <dl class="summary-list">
-              <div>
-                <dt>Collected GST</dt>
-                <dd data-report="paid-gst">$0.00</dd>
+      <main class="app-main">
+        <div class="container">
+          <section
+            id="dashboard"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-dashboard"
+            class="section is-active"
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Dashboard</h1>
+                <p class="section__subtitle">
+                  Monitor open jobs, receivables, quote performance, and payment speed.
+                </p>
               </div>
-              <div>
-                <dt>Outstanding GST</dt>
-                <dd data-report="outstanding-gst">$0.00</dd>
+            </header>
+            <div class="dashboard-grid">
+              <article class="card card--metric card--accent">
+                <header class="card__header">
+                  <h2 class="card__title">Open Jobs</h2>
+                </header>
+                <div class="card__body">
+                  <p class="metric__value" data-dashboard-value="openJobs">0</p>
+                  <p class="metric__meta">Active quotes and unpaid invoices.</p>
+                </div>
+              </article>
+              <article class="card card--metric">
+                <header class="card__header">
+                  <h2 class="card__title">Invoices Due</h2>
+                </header>
+                <div class="card__body">
+                  <p class="metric__value" data-dashboard-value="invoicesDue">$0.00</p>
+                  <p class="metric__meta">Amount outstanding across all invoices.</p>
+                </div>
+              </article>
+              <article class="card card--metric">
+                <header class="card__header">
+                  <h2 class="card__title">Quote Approval Rate</h2>
+                </header>
+                <div class="card__body">
+                  <p class="metric__value" data-dashboard-value="quoteApproval">0%</p>
+                  <p class="metric__meta">Acceptance percentage for submitted quotes.</p>
+                </div>
+              </article>
+              <article class="card card--metric">
+                <header class="card__header">
+                  <h2 class="card__title">Average Payment Time</h2>
+                </header>
+                <div class="card__body">
+                  <p class="metric__value" data-dashboard-value="paymentTime">0 days</p>
+                  <p class="metric__meta">Average days from issue to payment.</p>
+                </div>
+              </article>
+              <article class="card card--metric">
+                <header class="card__header">
+                  <h2 class="card__title">Upcoming Appointments</h2>
+                </header>
+                <div class="card__body">
+                  <p class="metric__value" data-dashboard-value="upcomingAppointments">0</p>
+                  <p class="metric__meta">Scheduled site visits for the next 7 days.</p>
+                </div>
+              </article>
+              <article class="card card--metric">
+                <header class="card__header">
+                  <h2 class="card__title">Material Reorders</h2>
+                </header>
+                <div class="card__body">
+                  <p class="metric__value" data-dashboard-value="materialReorders">0</p>
+                  <p class="metric__meta">Jobs awaiting material replenishment.</p>
+                </div>
+              </article>
+            </div>
+            <article class="card card--elev">
+              <header class="card__header">
+                <h2 class="card__title">Outstanding invoices</h2>
+              </header>
+              <div class="card__body">
+                <ul class="timeline" data-dashboard-outstanding aria-live="polite"></ul>
               </div>
-              <div>
-                <dt>Total GST liability</dt>
-                <dd data-report="total-gst">$0.00</dd>
-              </div>
-            </dl>
-          </aside>
-        </div>
-      </section>
+            </article>
+          </section>
 
-      <section
-        id="settings"
-        role="tabpanel"
-        tabindex="0"
-        aria-labelledby="tab-settings"
-        class="panel"
-        hidden
-      >
-        <header class="panel__header">
-          <div>
-            <h1>Business settings</h1>
-            <p>Configure your business identity, prefixes, and GST.</p>
-          </div>
-        </header>
-        <form id="settings-form" class="entity-form">
-          <fieldset class="entity-form__grid entity-form__grid--two">
-            <label>
-              Business name
-              <input type="text" name="businessName" />
-            </label>
-            <label>
-              ABN
-              <input type="text" name="abn" />
-            </label>
-            <label>
-              Contact name
-              <input type="text" name="contactName" />
-            </label>
-            <label>
-              Contact email
-              <input type="email" name="contactEmail" />
-            </label>
-            <label>
-              Contact phone
-              <input type="tel" name="contactPhone" />
-            </label>
-            <label>
-              Address
-              <input type="text" name="address" />
-            </label>
-            <label>
-              Invoice prefix
-              <input type="text" name="invoicePrefix" maxlength="6" />
-            </label>
-            <label>
-              Quote prefix
-              <input type="text" name="quotePrefix" maxlength="6" />
-            </label>
-            <label>
-              GST rate
-              <input type="number" name="gstRate" min="0" max="1" step="0.01" />
-            </label>
-          </fieldset>
-          <p class="form-feedback" data-feedback role="alert"></p>
-          <div class="form-actions form-actions--sticky">
-            <button class="btn" type="submit">Save settings</button>
-          </div>
-        </form>
-      </section>
-    </main>
+          <section
+            id="invoices"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-invoices"
+            class="section"
+            hidden
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Invoices</h1>
+                <p class="section__subtitle">Create and manage invoices with live GST calculations.</p>
+              </div>
+              <div class="section__actions">
+                <button class="btn btn--primary btn--md" type="button" data-action="open-invoice-form">
+                  Create invoice
+                </button>
+              </div>
+            </header>
+            <form id="invoice-form" class="form card" data-form="invoice" hidden>
+              <div class="form-layout">
+                <div class="form-layout__main">
+                  <div class="row row--g16 form-row">
+                    <div class="field field--grow field--lg">
+                      <label for="invoice-client">Client</label>
+                      <select id="invoice-client" name="clientId" required></select>
+                    </div>
+                    <div class="field field--auto">
+                      <label for="invoice-issue-date">Issue date</label>
+                      <input id="invoice-issue-date" type="date" name="issueDate" required />
+                    </div>
+                    <div class="field field--auto">
+                      <label for="invoice-due-date">Due date</label>
+                      <input id="invoice-due-date" type="date" name="dueDate" required />
+                    </div>
+                  </div>
+
+                  <div class="card card--subtle">
+                    <header class="card__header">
+                      <h2 class="card__title">Line items</h2>
+                    </header>
+                    <div class="card__body">
+                      <div class="table table--line-items">
+                        <div class="table__container">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th scope="col">Service</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">Qty</th>
+                                <th scope="col">Unit price</th>
+                                <th scope="col">GST</th>
+                                <th scope="col" class="text-right">Row total</th>
+                                <th scope="col" class="sr-only">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody data-line-items-body></tbody>
+                          </table>
+                        </div>
+                        <div class="table__footer">
+                          <button
+                            class="btn btn--secondary btn--md btn--full"
+                            type="button"
+                            data-action="add-line"
+                          >
+                            Add line item
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="field field--stack">
+                    <label for="invoice-notes">Notes</label>
+                    <textarea
+                      id="invoice-notes"
+                      name="notes"
+                      rows="3"
+                      placeholder="Payment terms or notes"
+                    ></textarea>
+                    <p class="hint">Optional invoice messaging displayed to the client.</p>
+                  </div>
+                </div>
+                <aside class="form-layout__aside">
+                  <div class="totals card card--elev" aria-live="polite">
+                    <header class="card__header">
+                      <h2 class="card__title">Totals</h2>
+                    </header>
+                    <div class="card__body">
+                      <dl class="totals__list">
+                        <div class="totals__row">
+                          <dt>Subtotal</dt>
+                          <dd data-total="subtotal">$0.00</dd>
+                        </div>
+                        <div class="totals__row">
+                          <dt>GST</dt>
+                          <dd data-total="gst">$0.00</dd>
+                        </div>
+                        <div class="totals__row totals__row--grand">
+                          <dt>Total</dt>
+                          <dd data-total="total">$0.00</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+              <p class="form-feedback" data-feedback role="alert"></p>
+              <div class="form-actions">
+                <button class="btn btn--primary btn--lg" type="submit">Save invoice</button>
+                <button class="btn btn--secondary btn--lg" type="button" data-action="cancel">Cancel</button>
+              </div>
+            </form>
+            <div class="card card--table" data-table="invoices" role="region" aria-live="polite">
+              <header class="card__header card__header--toolbar">
+                <h2 class="card__title">Invoice history</h2>
+              </header>
+              <div class="card__body">
+                <div class="table">
+                  <div class="table__container">
+                    <table>
+                      <caption class="sr-only">List of invoices</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Invoice</th>
+                          <th scope="col">Client</th>
+                          <th scope="col">Issued</th>
+                          <th scope="col">Due</th>
+                          <th scope="col" class="text-right">Total</th>
+                          <th scope="col">Status</th>
+                          <th scope="col" class="text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="quotes"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-quotes"
+            class="section"
+            hidden
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Quotes</h1>
+                <p class="section__subtitle">Send professional quotes and track acceptance.</p>
+              </div>
+              <div class="section__actions">
+                <button class="btn btn--primary btn--md" type="button" data-action="open-quote-form">
+                  Create quote
+                </button>
+              </div>
+            </header>
+            <form id="quote-form" class="form card" data-form="quote" hidden>
+              <div class="form-layout">
+                <div class="form-layout__main">
+                  <div class="row row--g16 form-row">
+                    <div class="field field--grow field--lg">
+                      <label for="quote-client">Client</label>
+                      <select id="quote-client" name="clientId" required></select>
+                    </div>
+                    <div class="field field--auto">
+                      <label for="quote-issue-date">Issue date</label>
+                      <input id="quote-issue-date" type="date" name="issueDate" required />
+                    </div>
+                    <div class="field field--auto">
+                      <label for="quote-valid-date">Valid until</label>
+                      <input id="quote-valid-date" type="date" name="validUntil" required />
+                    </div>
+                  </div>
+
+                  <div class="card card--subtle">
+                    <header class="card__header">
+                      <h2 class="card__title">Line items</h2>
+                    </header>
+                    <div class="card__body">
+                      <div class="table table--line-items">
+                        <div class="table__container">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th scope="col">Service</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">Qty</th>
+                                <th scope="col">Unit price</th>
+                                <th scope="col">GST</th>
+                                <th scope="col" class="text-right">Row total</th>
+                                <th scope="col" class="sr-only">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody data-line-items-body></tbody>
+                          </table>
+                        </div>
+                        <div class="table__footer">
+                          <button
+                            class="btn btn--secondary btn--md btn--full"
+                            type="button"
+                            data-action="add-line"
+                          >
+                            Add line item
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="field field--stack">
+                    <label for="quote-notes">Notes</label>
+                    <textarea
+                      id="quote-notes"
+                      name="notes"
+                      rows="3"
+                      placeholder="Proposal notes"
+                    ></textarea>
+                    <p class="hint">Clarify inclusions, exclusions, or follow-up expectations.</p>
+                  </div>
+                </div>
+                <aside class="form-layout__aside">
+                  <div class="totals card card--elev" aria-live="polite">
+                    <header class="card__header">
+                      <h2 class="card__title">Totals</h2>
+                    </header>
+                    <div class="card__body">
+                      <dl class="totals__list">
+                        <div class="totals__row">
+                          <dt>Subtotal</dt>
+                          <dd data-total="subtotal">$0.00</dd>
+                        </div>
+                        <div class="totals__row">
+                          <dt>GST</dt>
+                          <dd data-total="gst">$0.00</dd>
+                        </div>
+                        <div class="totals__row totals__row--grand">
+                          <dt>Total</dt>
+                          <dd data-total="total">$0.00</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+              <p class="form-feedback" data-feedback role="alert"></p>
+              <div class="form-actions">
+                <button class="btn btn--primary btn--lg" type="submit">Save quote</button>
+                <button class="btn btn--secondary btn--lg" type="button" data-action="cancel">Cancel</button>
+              </div>
+            </form>
+            <div class="card card--table" data-table="quotes" role="region" aria-live="polite">
+              <header class="card__header card__header--toolbar">
+                <h2 class="card__title">Quote tracker</h2>
+              </header>
+              <div class="card__body">
+                <div class="table">
+                  <div class="table__container">
+                    <table>
+                      <caption class="sr-only">List of quotes</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Quote</th>
+                          <th scope="col">Client</th>
+                          <th scope="col">Issued</th>
+                          <th scope="col">Valid until</th>
+                          <th scope="col" class="text-right">Total</th>
+                          <th scope="col">Status</th>
+                          <th scope="col" class="text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="clients"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-clients"
+            class="section"
+            hidden
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Clients</h1>
+                <p class="section__subtitle">Maintain client records with billing prefixes.</p>
+              </div>
+              <div class="section__actions">
+                <a class="btn btn--primary btn--md" href="#client-form">Add client</a>
+              </div>
+            </header>
+            <form id="client-form" class="form card">
+              <input type="hidden" name="clientId" />
+              <div class="row row--g16 row--split">
+                <div class="field">
+                  <label for="client-contact">Contact name</label>
+                  <input id="client-contact" type="text" name="name" required />
+                </div>
+                <div class="field">
+                  <label for="client-business">Business name</label>
+                  <input id="client-business" type="text" name="businessName" required />
+                </div>
+                <div class="field field--span">
+                  <label for="client-address">Address</label>
+                  <input id="client-address" type="text" name="address" required />
+                </div>
+                <div class="field">
+                  <label for="client-abn">ABN</label>
+                  <input id="client-abn" type="text" name="abn" required />
+                </div>
+                <div class="field">
+                  <label for="client-contact-details">Contact details</label>
+                  <input id="client-contact-details" type="text" name="contact" required />
+                </div>
+                <div class="field">
+                  <label for="client-email">Email</label>
+                  <input id="client-email" type="email" name="email" />
+                </div>
+                <div class="field">
+                  <label for="client-prefix">Document prefix</label>
+                  <input id="client-prefix" type="text" name="prefix" maxlength="6" required />
+                </div>
+              </div>
+              <p class="form-feedback" data-feedback role="alert"></p>
+              <div class="form-actions">
+                <button class="btn btn--primary btn--lg" type="submit">Save client</button>
+                <button class="btn btn--secondary btn--lg" type="reset">Clear</button>
+              </div>
+            </form>
+            <div class="card card--table" data-table="clients" role="region" aria-live="polite">
+              <header class="card__header card__header--toolbar">
+                <h2 class="card__title">Client directory</h2>
+                <div class="toolbar">
+                  <div class="toolbar__start">
+                    <a class="btn btn--primary btn--sm" href="#client-form">Add client</a>
+                  </div>
+                  <div class="toolbar__end">
+                    <label class="field field--inline" for="client-search">
+                      <span class="field__label">Search</span>
+                      <input id="client-search" type="search" placeholder="Filter clients" data-filter="clients" />
+                    </label>
+                  </div>
+                </div>
+              </header>
+              <div class="card__body">
+                <div class="table">
+                  <div class="table__container">
+                    <table>
+                      <caption class="sr-only">Client list</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Business</th>
+                          <th scope="col">Contact</th>
+                          <th scope="col">ABN</th>
+                          <th scope="col">Phone / Notes</th>
+                          <th scope="col">Prefix</th>
+                          <th scope="col">Email</th>
+                          <th scope="col" class="text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="services"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-services"
+            class="section"
+            hidden
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Services</h1>
+                <p class="section__subtitle">Build a reusable catalog of services and labour rates.</p>
+              </div>
+              <div class="section__actions">
+                <a class="btn btn--primary btn--md" href="#service-form">Add service</a>
+              </div>
+            </header>
+            <form id="service-form" class="form card form--inline">
+              <div class="row row--g16 row--inline">
+                <div class="field field--grow">
+                  <label for="service-description">Description</label>
+                  <input id="service-description" type="text" name="description" required />
+                </div>
+                <div class="field field--shrink">
+                  <label for="service-price">Unit price</label>
+                  <input
+                    id="service-price"
+                    type="number"
+                    name="unitPrice"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+              <p class="form-feedback" data-feedback role="alert"></p>
+              <div class="form-actions">
+                <button class="btn btn--primary btn--md" type="submit">Add service</button>
+              </div>
+            </form>
+            <div class="card card--table" data-table="services" role="region" aria-live="polite">
+              <header class="card__header card__header--toolbar">
+                <h2 class="card__title">Service catalog</h2>
+                <div class="toolbar">
+                  <div class="toolbar__start">
+                    <a class="btn btn--primary btn--sm" href="#service-form">Add service</a>
+                  </div>
+                  <div class="toolbar__end">
+                    <label class="field field--inline" for="service-search">
+                      <span class="field__label">Search</span>
+                      <input id="service-search" type="search" placeholder="Filter services" data-filter="services" />
+                    </label>
+                  </div>
+                </div>
+              </header>
+              <div class="card__body">
+                <div class="table table--compact">
+                  <div class="table__container">
+                    <table>
+                      <caption class="sr-only">Service catalog</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Service</th>
+                          <th scope="col" class="text-right">Unit price</th>
+                          <th scope="col" class="text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="payments"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-payments"
+            class="section"
+            hidden
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Payments</h1>
+                <p class="section__subtitle">Track collections and mark invoices as paid.</p>
+              </div>
+              <div class="section__actions">
+                <button class="btn btn--primary btn--md" type="button" data-action="open-payment-form">
+                  Add payment
+                </button>
+              </div>
+            </header>
+            <div class="card card--table" data-table="payments-outstanding" role="region" aria-live="polite">
+              <header class="card__header card__header--toolbar">
+                <h2 class="card__title">Outstanding invoices</h2>
+                <div class="toolbar">
+                  <div class="toolbar__start">
+                    <button class="btn btn--primary btn--sm" type="button" data-action="open-invoice-form">
+                      New invoice
+                    </button>
+                  </div>
+                  <div class="toolbar__end">
+                    <label class="field field--inline" for="payments-search">
+                      <span class="field__label">Search</span>
+                      <input id="payments-search" type="search" placeholder="Filter invoices" data-filter="payments" />
+                    </label>
+                  </div>
+                </div>
+              </header>
+              <div class="card__body">
+                <div class="table">
+                  <div class="table__container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">Invoice</th>
+                          <th scope="col">Client</th>
+                          <th scope="col">Due</th>
+                          <th scope="col" class="text-right">Amount</th>
+                          <th scope="col" class="text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card--table" data-table="payments-history" role="region" aria-live="polite">
+              <header class="card__header">
+                <h2 class="card__title">Payment history</h2>
+              </header>
+              <div class="card__body">
+                <div class="table table--compact">
+                  <div class="table__container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">Invoice</th>
+                          <th scope="col">Client</th>
+                          <th scope="col">Date</th>
+                          <th scope="col" class="text-right">Amount</th>
+                          <th scope="col">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="reports"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-reports"
+            class="section"
+            hidden
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Reports</h1>
+                <p class="section__subtitle">Visualise revenue trends and GST exposure.</p>
+              </div>
+            </header>
+            <div class="reports-grid">
+              <article class="card card--elev reports-grid__chart">
+                <header class="card__header">
+                  <h2 class="card__title">Monthly invoice totals</h2>
+                </header>
+                <div class="card__body">
+                  <div class="chart-frame">
+                    <canvas id="reports-chart" aria-label="Monthly invoice totals" role="img"></canvas>
+                  </div>
+                </div>
+              </article>
+              <aside class="card card--subtle reports-grid__summary">
+                <header class="card__header">
+                  <h2 class="card__title">GST summary</h2>
+                </header>
+                <div class="card__body">
+                  <dl class="summary-list">
+                    <div>
+                      <dt>Collected GST</dt>
+                      <dd data-report="paid-gst">$0.00</dd>
+                    </div>
+                    <div>
+                      <dt>Outstanding GST</dt>
+                      <dd data-report="outstanding-gst">$0.00</dd>
+                    </div>
+                    <div>
+                      <dt>Total GST liability</dt>
+                      <dd data-report="total-gst">$0.00</dd>
+                    </div>
+                  </dl>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <section
+            id="settings"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="tab-settings"
+            class="section"
+            hidden
+          >
+            <header class="section__header">
+              <div class="section__copy">
+                <h1 class="section__title">Business settings</h1>
+                <p class="section__subtitle">Configure your business identity, prefixes, and GST.</p>
+              </div>
+            </header>
+            <form id="settings-form" class="form card">
+              <div class="row row--g16 row--split">
+                <div class="field">
+                  <label for="settings-business">Business name</label>
+                  <input id="settings-business" type="text" name="businessName" />
+                </div>
+                <div class="field">
+                  <label for="settings-abn">ABN</label>
+                  <input id="settings-abn" type="text" name="abn" />
+                </div>
+                <div class="field">
+                  <label for="settings-contact-name">Contact name</label>
+                  <input id="settings-contact-name" type="text" name="contactName" />
+                </div>
+                <div class="field">
+                  <label for="settings-contact-email">Contact email</label>
+                  <input id="settings-contact-email" type="email" name="contactEmail" />
+                </div>
+                <div class="field">
+                  <label for="settings-contact-phone">Contact phone</label>
+                  <input id="settings-contact-phone" type="tel" name="contactPhone" />
+                </div>
+                <div class="field field--span">
+                  <label for="settings-address">Address</label>
+                  <input id="settings-address" type="text" name="address" />
+                </div>
+                <div class="field">
+                  <label for="settings-invoice-prefix">Invoice prefix</label>
+                  <input id="settings-invoice-prefix" type="text" name="invoicePrefix" maxlength="6" />
+                </div>
+                <div class="field">
+                  <label for="settings-quote-prefix">Quote prefix</label>
+                  <input id="settings-quote-prefix" type="text" name="quotePrefix" maxlength="6" />
+                </div>
+                <div class="field">
+                  <label for="settings-gst-rate">GST rate</label>
+                  <input id="settings-gst-rate" type="number" name="gstRate" min="0" max="1" step="0.01" />
+                </div>
+              </div>
+              <p class="form-feedback" data-feedback role="alert"></p>
+              <div class="form-actions form-actions--persistent">
+                <button class="btn btn--primary btn--lg" type="submit">Save settings</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
 
     <template id="line-item-template">
-      <div class="line-item-row">
-        <select data-field="service" aria-label="Service selector"></select>
-        <input type="text" data-field="description" placeholder="Description" required />
-        <input type="number" data-field="quantity" min="0" step="1" placeholder="Qty" />
-        <input type="number" data-field="unitPrice" min="0" step="0.01" placeholder="Unit price" />
-        <label class="checkbox">
-          <input type="checkbox" data-field="gst" />
-          <span>GST</span>
-        </label>
-        <span data-field="lineTotal" class="line-item-total">$0.00</span>
-        <button class="btn btn--ghost btn--small" type="button" data-action="remove-line">Remove</button>
-      </div>
+      <tr class="line-item-row">
+        <td class="line-item__service">
+          <select data-field="service" aria-label="Service selector"></select>
+        </td>
+        <td class="line-item__description">
+          <input type="text" data-field="description" placeholder="Description" required />
+        </td>
+        <td class="line-item__quantity">
+          <input type="number" data-field="quantity" min="0" step="1" placeholder="Qty" />
+        </td>
+        <td class="line-item__unit">
+          <input type="number" data-field="unitPrice" min="0" step="0.01" placeholder="Unit price" />
+        </td>
+        <td class="line-item__gst">
+          <label class="checkbox" aria-label="Apply GST">
+            <input type="checkbox" data-field="gst" />
+            <span aria-hidden="true">GST</span>
+          </label>
+        </td>
+        <td class="line-item__total">
+          <span data-field="lineTotal" class="line-item-total">$0.00</span>
+        </td>
+        <td class="line-item__actions">
+          <button
+            class="btn btn--icon btn--secondary btn--sm"
+            type="button"
+            data-action="remove-line"
+            aria-label="Remove line item"
+          >
+            <span aria-hidden="true">✕</span>
+          </button>
+        </td>
+      </tr>
     </template>
   </body>
 </html>
