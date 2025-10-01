@@ -265,7 +265,7 @@ class ZantraApp {
     this.tabButtons = Array.from(document.querySelectorAll('.primary-nav [role="tab"]'));
     this.resumeSetupButton = document.querySelector('.resume-setup-btn');
     this.newInvoiceButton = document.querySelector('.new-invoice-btn');
-    this.sectionInvoiceButton = document.querySelector('[data-action="open-invoice-form"]');
+    this.sectionInvoiceButtons = Array.from(document.querySelectorAll('[data-action="open-invoice-form"]'));
     this.newQuoteButton = document.querySelector('[data-action="open-quote-form"]');
 
     this.dashboardMetrics = {
@@ -359,11 +359,13 @@ class ZantraApp {
         this.toggleInvoiceForm(true);
       });
     }
-    if (this.sectionInvoiceButton) {
-      this.sectionInvoiceButton.addEventListener('click', (event) => {
-        event.preventDefault();
-        this.activateSection('invoices');
-        this.toggleInvoiceForm(true);
+    if (this.sectionInvoiceButtons.length) {
+      this.sectionInvoiceButtons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          this.activateSection('invoices');
+          this.toggleInvoiceForm(true);
+        });
       });
     }
     if (this.newQuoteButton) {
@@ -558,7 +560,7 @@ class ZantraApp {
               ${
                 invoice.status === 'paid'
                   ? `<span class="status-pill status-pill--success">Paid ${formatDate(invoice.paidAt)}</span>`
-                  : `<button class="btn btn--small" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
+                  : `<button class="btn btn--sm btn--primary" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
               }
             </td>
           `;
@@ -699,8 +701,8 @@ class ZantraApp {
             <td>
               ${
                 quote.status === 'pending'
-                  ? `<button class="btn btn--small" data-action="accept" data-id="${quote.id}">Accept</button>
-                     <button class="btn btn--small btn--ghost" data-action="decline" data-id="${quote.id}">Decline</button>`
+                  ? `<button class="btn btn--sm btn--primary" data-action="accept" data-id="${quote.id}">Accept</button>
+                     <button class="btn btn--sm btn--destructive" data-action="decline" data-id="${quote.id}">Decline</button>`
                   : quote.status === 'accepted'
                   ? `<span class="status-pill status-pill--success">Accepted</span>`
                   : `<span class="status-pill status-pill--muted">Declined</span>`
@@ -808,8 +810,8 @@ class ZantraApp {
             <td>${client.prefix}</td>
             <td>${client.email || ''}</td>
             <td>
-              <button class="btn btn--small" data-action="edit" data-id="${client.id}">Edit</button>
-              <button class="btn btn--small btn--ghost" data-action="delete" data-id="${client.id}">Delete</button>
+              <button class="btn btn--sm btn--secondary" data-action="edit" data-id="${client.id}">Edit</button>
+              <button class="btn btn--sm btn--destructive" data-action="delete" data-id="${client.id}">Delete</button>
             </td>
           `;
           this.clientListBody.appendChild(row);
@@ -927,7 +929,7 @@ class ZantraApp {
             <td>${service.description}</td>
             <td>${formatCurrency(service.unitPrice)}</td>
             <td>
-              <button class="btn btn--small btn--ghost" data-action="remove" data-id="${service.id}">Delete</button>
+              <button class="btn btn--sm btn--destructive" data-action="remove" data-id="${service.id}">Delete</button>
             </td>
           `;
           this.serviceListBody.appendChild(row);
@@ -967,7 +969,7 @@ class ZantraApp {
           <td>${invoice.clientName}</td>
           <td>${formatDate(invoice.dueDate)}</td>
           <td>${formatCurrency(invoice.total)}</td>
-          <td><button class="btn btn--small" data-action="record-payment" data-id="${invoice.id}">Record payment</button></td>
+          <td><button class="btn btn--sm btn--primary" data-action="record-payment" data-id="${invoice.id}">Record payment</button></td>
         `;
         this.paymentOutstandingBody.appendChild(row);
       });
