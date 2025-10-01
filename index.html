@@ -10,36 +10,40 @@
       href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
   <body>
-    <header class="app-header">
-      <div class="brand">
-        <span class="brand__icon" aria-hidden="true">🔧</span>
-        <div>
-          <p class="brand__title">Zantra Invoicing</p>
-          <p class="brand__subtitle">Field service billing suite</p>
+    <header class="app-header" role="banner">
+      <div class="header__inner container">
+        <div class="brand">
+          <span class="brand__icon" aria-hidden="true">🔧</span>
+          <div class="brand__text">
+            <p class="brand__title">Zantra Invoicing</p>
+            <p class="brand__subtitle">Field service billing suite</p>
+          </div>
         </div>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn--ghost resume-setup-btn" type="button">
-          <span aria-hidden="true">⚙️</span>
-          <span>Resume setup</span>
-        </button>
-        <button class="btn new-invoice-btn" type="button">
-          <span aria-hidden="true">➕</span>
-          <span>New invoice</span>
-        </button>
+        <div class="header-actions">
+          <button class="btn btn--ghost resume-setup-btn" type="button">
+            <span aria-hidden="true">⚙️</span>
+            <span>Resume setup</span>
+          </button>
+          <button class="btn new-invoice-btn" type="button">
+            <span aria-hidden="true">➕</span>
+            <span>New invoice</span>
+          </button>
+        </div>
       </div>
     </header>
 
     <nav class="primary-nav" aria-label="Primary navigation">
-      <div role="tablist" aria-label="Application sections" class="tablist">
-        <button role="tab" aria-selected="true" aria-controls="dashboard" id="tab-dashboard" class="active">
-          Dashboard
-        </button>
-        <button role="tab" aria-selected="false" aria-controls="invoices" id="tab-invoices">
-          Invoices
+      <div class="container">
+        <div role="tablist" aria-label="Application sections" class="tablist">
+          <button role="tab" aria-selected="true" aria-controls="dashboard" id="tab-dashboard" class="active">
+            Dashboard
+          </button>
+          <button role="tab" aria-selected="false" aria-controls="invoices" id="tab-invoices">
+            Invoices
         </button>
         <button role="tab" aria-selected="false" aria-controls="quotes" id="tab-quotes">
           Quotes
@@ -56,13 +60,14 @@
         <button role="tab" aria-selected="false" aria-controls="reports" id="tab-reports">
           Reports
         </button>
-        <button role="tab" aria-selected="false" aria-controls="settings" id="tab-settings">
-          Settings
-        </button>
+          <button role="tab" aria-selected="false" aria-controls="settings" id="tab-settings">
+            Settings
+          </button>
+        </div>
       </div>
     </nav>
 
-    <main class="layout">
+    <main class="layout container">
       <section
         id="dashboard"
         role="tabpanel"
@@ -94,6 +99,16 @@
             <h2>Average Payment Time</h2>
             <p class="metric-value" data-dashboard-value="paymentTime">0 days</p>
             <p class="metric-description">Average days from issue to payment.</p>
+          </article>
+          <article class="card">
+            <h2>Upcoming Appointments</h2>
+            <p class="metric-value" data-dashboard-value="upcomingAppointments">0</p>
+            <p class="metric-description">Scheduled site visits for the next 7 days.</p>
+          </article>
+          <article class="card">
+            <h2>Material Reorders</h2>
+            <p class="metric-value" data-dashboard-value="materialReorders">0</p>
+            <p class="metric-description">Jobs awaiting material replenishment.</p>
           </article>
         </div>
         <div class="card stretch">
@@ -153,7 +168,7 @@
             Notes
             <textarea name="notes" rows="3" placeholder="Payment terms or notes"></textarea>
           </label>
-          <div class="totals">
+          <div class="totals" aria-live="polite">
             <div>Subtotal <span data-total="subtotal">$0.00</span></div>
             <div>GST <span data-total="gst">$0.00</span></div>
             <div class="totals__grand">Total <span data-total="total">$0.00</span></div>
@@ -277,6 +292,9 @@
             <h1>Clients</h1>
             <p>Maintain client records with billing prefixes.</p>
           </div>
+          <div class="panel__actions">
+            <a class="btn" href="#client-form">Add client</a>
+          </div>
         </header>
         <form id="client-form" class="entity-form">
           <input type="hidden" name="clientId" />
@@ -348,6 +366,9 @@
             <h1>Services</h1>
             <p>Build a reusable catalog of services and labour rates.</p>
           </div>
+          <div class="panel__actions">
+            <a class="btn" href="#service-form">Add service</a>
+          </div>
         </header>
         <form id="service-form" class="entity-form entity-form--inline">
           <label>
@@ -390,6 +411,9 @@
           <div>
             <h1>Payments</h1>
             <p>Track collections and mark invoices as paid.</p>
+          </div>
+          <div class="panel__actions">
+            <button class="btn" type="button" data-action="open-payment-form">Add payment</button>
           </div>
         </header>
         <div class="table-wrapper" data-table="payments-outstanding" role="region" aria-live="polite">
@@ -516,7 +540,7 @@
             </label>
           </fieldset>
           <p class="form-feedback" data-feedback role="alert"></p>
-          <div class="form-actions">
+          <div class="form-actions form-actions--sticky">
             <button class="btn" type="submit">Save settings</button>
           </div>
         </form>
