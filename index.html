@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zantra Invoicing – Trade Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles/main.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand__icon" aria-hidden="true">🔧</span>
+        <div>
+          <p class="brand__title">Zantra Invoicing</p>
+          <p class="brand__subtitle">Trade Operations Console</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn--ghost" id="open-wizard" type="button">
+          <span aria-hidden="true">🎯</span>
+          <span>Resume setup</span>
+        </button>
+        <button class="btn" type="button">
+          <span aria-hidden="true">➕</span>
+          <span>New invoice</span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="primary-nav" aria-label="Primary navigation">
+      <div role="tablist" aria-label="Application sections" class="tablist">
+        <button role="tab" aria-selected="true" aria-controls="panel-dashboard" id="tab-dashboard">
+          Dashboard
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-invoices" id="tab-invoices">
+          Invoices
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-quotes" id="tab-quotes">
+          Quotes
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-clients" id="tab-clients">
+          Clients
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-services" id="tab-services">
+          Services
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-payments" id="tab-payments">
+          Payments
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-reports" id="tab-reports">
+          Reports
+        </button>
+        <button role="tab" aria-selected="false" aria-controls="panel-settings" id="tab-settings">
+          Settings
+        </button>
+      </div>
+    </nav>
+
+    <main class="layout">
+      <section
+        id="panel-dashboard"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-dashboard"
+        class="panel is-active"
+      >
+        <header class="panel__header">
+          <h1>Dashboard</h1>
+          <p>Real-time overview of all trade and invoicing activity.</p>
+        </header>
+        <div class="content-grid">
+          <article class="card accent">
+            <h2>Open Jobs</h2>
+            <p class="card__metric">14</p>
+            <p>Active service calls scheduled for this week.</p>
+          </article>
+          <article class="card">
+            <h2>Invoices Due</h2>
+            <p class="card__metric">$18,450</p>
+            <p>Across 9 invoices awaiting payment.</p>
+          </article>
+          <article class="card">
+            <h2>Quote Approval Rate</h2>
+            <p class="card__metric">72%</p>
+            <p>Quotes accepted over the last 30 days.</p>
+          </article>
+          <article class="card">
+            <h2>Average Payment Time</h2>
+            <p class="card__metric">18 days</p>
+            <p>Median days from invoice issued to payment received.</p>
+          </article>
+        </div>
+        <div class="content-grid content-grid--two">
+          <article class="card stretch">
+            <h2>Upcoming Appointments</h2>
+            <ul class="timeline" aria-label="Upcoming appointments">
+              <li>
+                <p class="timeline__title">Site inspection – Skyline Plaza</p>
+                <p class="timeline__meta">Tomorrow · Assigned to A. Patel</p>
+              </li>
+              <li>
+                <p class="timeline__title">HVAC maintenance – Harbor Mall</p>
+                <p class="timeline__meta">Thu, 10:00 · Assigned to C. Rivera</p>
+              </li>
+              <li>
+                <p class="timeline__title">Lighting upgrade – West Yard</p>
+                <p class="timeline__meta">Fri, 14:30 · Assigned to S. Chen</p>
+              </li>
+            </ul>
+          </article>
+          <article class="card stretch">
+            <h2>Material Reorders</h2>
+            <div class="list">
+              <div>
+                <p class="list__title">Copper piping 3"</p>
+                <p class="list__meta">Stock: 6 · Recommended reorder</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Reorder</button>
+            </div>
+            <div class="list">
+              <div>
+                <p class="list__title">Industrial sealant</p>
+                <p class="list__meta">Stock: 12 · Target: 20</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Reorder</button>
+            </div>
+            <div class="list">
+              <div>
+                <p class="list__title">Galvanized bolts M12</p>
+                <p class="list__meta">Stock: 150 · Stable</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Adjust</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section
+        id="panel-invoices"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-invoices"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Invoices</h1>
+          <p>Track issued invoices, statuses, and collections.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Create invoice</button>
+            <button class="btn btn--ghost" type="button">Export CSV</button>
+          </div>
+        </header>
+        <div class="table-wrapper" role="region" aria-live="polite">
+          <table>
+            <caption class="sr-only">Invoice overview</caption>
+            <thead>
+              <tr>
+                <th scope="col">Invoice</th>
+                <th scope="col">Client</th>
+                <th scope="col">Issued</th>
+                <th scope="col">Due</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>#INV-2048</td>
+                <td>Northline Logistics</td>
+                <td>Apr 4</td>
+                <td>Apr 18</td>
+                <td>$4,980</td>
+                <td><span class="status status--warning">Due soon</span></td>
+              </tr>
+              <tr>
+                <td>#INV-2047</td>
+                <td>Metro Builders</td>
+                <td>Apr 2</td>
+                <td>Apr 16</td>
+                <td>$7,450</td>
+                <td><span class="status status--danger">Overdue</span></td>
+              </tr>
+              <tr>
+                <td>#INV-2046</td>
+                <td>Summit Hospitality</td>
+                <td>Mar 30</td>
+                <td>Apr 13</td>
+                <td>$2,130</td>
+                <td><span class="status status--success">Paid</span></td>
+              </tr>
+              <tr>
+                <td>#INV-2045</td>
+                <td>Brightline Energy</td>
+                <td>Mar 28</td>
+                <td>Apr 11</td>
+                <td>$3,780</td>
+                <td><span class="status status--info">Partial</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section
+        id="panel-quotes"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-quotes"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Quotes</h1>
+          <p>Send professional estimates and convert approvals into jobs.</p>
+        </header>
+        <div class="content-grid content-grid--two">
+          <article class="card stretch">
+            <h2>Drafts</h2>
+            <ul class="timeline">
+              <li>
+                <p class="timeline__title">Retrofit – Greenline Apartments</p>
+                <p class="timeline__meta">Edited 2h ago · $9,850</p>
+              </li>
+              <li>
+                <p class="timeline__title">Emergency generator install</p>
+                <p class="timeline__meta">Edited 1d ago · $15,600</p>
+              </li>
+            </ul>
+          </article>
+          <article class="card stretch">
+            <h2>Approvals waiting</h2>
+            <div class="list">
+              <div>
+                <p class="list__title">Signal Tower – Service Contract</p>
+                <p class="list__meta">Sent Apr 2 · Follow up in 2 days</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Nudge</button>
+            </div>
+            <div class="list">
+              <div>
+                <p class="list__title">Warehouse expansion cabling</p>
+                <p class="list__meta">Sent Mar 31 · Negotiating terms</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Update</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section
+        id="panel-clients"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-clients"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Clients</h1>
+          <p>Manage contact details, account status, and project history.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Add client</button>
+            <button class="btn btn--ghost" type="button">Import</button>
+          </div>
+        </header>
+        <div class="card card--split">
+          <form class="form" aria-label="Client filters">
+            <label for="client-search">Search clients</label>
+            <input id="client-search" type="search" name="client-search" placeholder="Enter client or project" />
+            <label for="client-segment">Segment</label>
+            <select id="client-segment" name="client-segment">
+              <option>All clients</option>
+              <option>Commercial</option>
+              <option>Residential</option>
+              <option>Maintenance contracts</option>
+            </select>
+            <label class="checkbox">
+              <input type="checkbox" name="client-active" checked />
+              <span>Show active projects only</span>
+            </label>
+          </form>
+          <div class="client-list" role="region" aria-live="polite">
+            <article>
+              <h3>Metro Builders</h3>
+              <p>Main contact: Jordan Lee · +1 (415) 555-2749</p>
+              <p class="client-status client-status--primary">Priority partner</p>
+            </article>
+            <article>
+              <h3>Northline Logistics</h3>
+              <p>Main contact: Ava Morgan · +1 (312) 555-4821</p>
+              <p class="client-status">Standard</p>
+            </article>
+            <article>
+              <h3>Summit Hospitality</h3>
+              <p>Main contact: Mateo Garcia · +1 (206) 555-9931</p>
+              <p class="client-status client-status--warning">Credit hold</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="panel-services"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-services"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Services</h1>
+          <p>Standardize the work you deliver and automate pricing.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Add service</button>
+            <button class="btn btn--ghost" type="button">Bulk update</button>
+          </div>
+        </header>
+        <div class="content-grid content-grid--two">
+          <article class="card">
+            <h2>Service catalogue</h2>
+            <ul class="timeline">
+              <li>
+                <p class="timeline__title">Preventive maintenance visit</p>
+                <p class="timeline__meta">Standard rate · 4h labor</p>
+              </li>
+              <li>
+                <p class="timeline__title">Emergency call-out</p>
+                <p class="timeline__meta">After-hours surcharge applied</p>
+              </li>
+              <li>
+                <p class="timeline__title">Design & consultancy</p>
+                <p class="timeline__meta">Custom quoting workflow</p>
+              </li>
+            </ul>
+          </article>
+          <article class="card">
+            <h2>Bundles</h2>
+            <div class="list">
+              <div>
+                <p class="list__title">Seasonal maintenance bundle</p>
+                <p class="list__meta">20% discount · Includes filter kits</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Edit</button>
+            </div>
+            <div class="list">
+              <div>
+                <p class="list__title">Premium install package</p>
+                <p class="list__meta">Extended warranty & training</p>
+              </div>
+              <button class="btn btn--ghost" type="button">Edit</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section
+        id="panel-payments"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-payments"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Payments</h1>
+          <p>Monitor transaction health and streamline collections.</p>
+        </header>
+        <div class="content-grid">
+          <article class="card">
+            <h2>Collected this month</h2>
+            <p class="card__metric">$42,210</p>
+            <p>Up 18% compared with March.</p>
+          </article>
+          <article class="card">
+            <h2>Disputes</h2>
+            <p class="card__metric">2</p>
+            <p>Both awaiting client documentation.</p>
+          </article>
+          <article class="card">
+            <h2>Payout schedule</h2>
+            <p class="card__metric">Every Friday</p>
+            <p>Next payout arrives Apr 12.</p>
+          </article>
+        </div>
+        <div class="table-wrapper" role="region" aria-live="polite">
+          <table>
+            <caption class="sr-only">Recent payments</caption>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Client</th>
+                <th scope="col">Invoice</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Method</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Apr 8</td>
+                <td>Northline Logistics</td>
+                <td>#INV-2039</td>
+                <td>$6,950</td>
+                <td>ACH</td>
+                <td><span class="status status--success">Cleared</span></td>
+              </tr>
+              <tr>
+                <td>Apr 7</td>
+                <td>Metro Builders</td>
+                <td>#INV-2034</td>
+                <td>$3,120</td>
+                <td>Card</td>
+                <td><span class="status status--info">Processing</span></td>
+              </tr>
+              <tr>
+                <td>Apr 6</td>
+                <td>Summit Hospitality</td>
+                <td>#INV-2028</td>
+                <td>$1,460</td>
+                <td>Card</td>
+                <td><span class="status status--danger">Failed</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section
+        id="panel-reports"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-reports"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Reports</h1>
+          <p>Generate insights to drive your trade operations.</p>
+          <div class="panel__actions">
+            <button class="btn" type="button">Build report</button>
+            <button class="btn btn--ghost" type="button">Schedule</button>
+          </div>
+        </header>
+        <div class="card card--split">
+          <section aria-label="Report templates" class="report-list">
+            <article>
+              <h3>Revenue by service</h3>
+              <p>Break down earnings per service line, month over month.</p>
+            </article>
+            <article>
+              <h3>Technician utilization</h3>
+              <p>Track crew allocation and overtime exposure.</p>
+            </article>
+            <article>
+              <h3>Cash flow forecast</h3>
+              <p>Combine projected invoices and expenses into a 90-day outlook.</p>
+            </article>
+          </section>
+          <form class="form" aria-label="Report filters">
+            <label for="report-range">Date range</label>
+            <select id="report-range" name="report-range">
+              <option>Last 30 days</option>
+              <option>Quarter to date</option>
+              <option>Year to date</option>
+            </select>
+            <label for="report-format">Format</label>
+            <select id="report-format" name="report-format">
+              <option>PDF</option>
+              <option>Excel</option>
+              <option>CSV</option>
+            </select>
+            <button class="btn" type="button">Generate</button>
+          </form>
+        </div>
+      </section>
+
+      <section
+        id="panel-settings"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="tab-settings"
+        class="panel"
+      >
+        <header class="panel__header">
+          <h1>Settings</h1>
+          <p>Configure company defaults, tax rules, payment gateways, and more.</p>
+        </header>
+        <div class="content-grid content-grid--two">
+          <article class="card">
+            <h2>Company profile</h2>
+            <p>Complete your business profile to personalize documents.</p>
+            <button class="btn" type="button" data-wizard-trigger>Launch setup</button>
+          </article>
+          <article class="card">
+            <h2>Notifications</h2>
+            <form class="form" aria-label="Notification preferences">
+              <label class="checkbox">
+                <input type="checkbox" checked />
+                <span>Email me when payments fail</span>
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" />
+                <span>Daily invoice digest</span>
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" checked />
+                <span>Mobile push for urgent work orders</span>
+              </label>
+            </form>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>&copy; <span id="current-year"></span> Zantra Invoicing. Built for modern trades.</p>
+      <button class="btn btn--ghost" type="button" data-wizard-trigger>Restart onboarding</button>
+    </footer>
+
+    <section
+      class="wizard"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wizard-title"
+      aria-describedby="wizard-description"
+    >
+      <div class="wizard__backdrop" data-wizard-close></div>
+      <div class="wizard__dialog" role="document">
+        <header class="wizard__header">
+          <p class="wizard__badge">First-time setup</p>
+          <h2 id="wizard-title">Get Zantra ready for your crew</h2>
+          <p id="wizard-description">
+            Configure the essentials so you can invoice, quote, and collect payments without delay.
+          </p>
+        </header>
+        <div class="wizard__progress" aria-hidden="true">
+          <div class="wizard__progress-bar" id="wizard-progress"></div>
+        </div>
+        <section class="wizard__content" aria-live="polite"></section>
+        <footer class="wizard__footer">
+          <button class="btn btn--ghost" type="button" id="wizard-back">Back</button>
+          <div class="wizard__spacer"></div>
+          <button class="btn btn--ghost" type="button" id="wizard-skip">Skip</button>
+          <button class="btn" type="button" id="wizard-next">Next</button>
+        </footer>
+      </div>
+    </section>
+
+    <div class="sr-only" aria-live="assertive" id="wizard-status"></div>
+
+    <script src="scripts/main.js" defer></script>
+  </body>
+</html>
