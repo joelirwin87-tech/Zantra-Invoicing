@@ -4,7 +4,8 @@
   "description": "Invoicing utilities with DataManager and invoice calculations.",
   "type": "module",
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "build": "webpack"
   },
   "keywords": [],
   "author": "",
