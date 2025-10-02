@@ -758,41 +758,82 @@
             <header class="section__header">
               <div class="section__copy">
                 <h1 class="section__title">Reports</h1>
-                <p class="section__subtitle">Visualise revenue trends and GST exposure.</p>
+                <p class="section__subtitle">
+                  Generate accountant-ready packs, BAS drafts, and financial insights.
+                </p>
               </div>
             </header>
-            <div class="reports-grid">
-              <article class="card card--elev reports-grid__chart">
-                <header class="card__header">
-                  <h2 class="card__title">Monthly invoice totals</h2>
-                </header>
-                <div class="card__body">
-                  <div class="chart-frame">
-                    <canvas id="reports-chart" aria-label="Monthly invoice totals" role="img"></canvas>
+            <div class="reports-hub" data-report-root>
+              <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 xl:tw-grid-cols-3 tw-gap-6">
+                <article class="report-card">
+                  <div>
+                    <h2 class="report-card__title">Generate BAS</h2>
+                    <p class="report-card__copy">
+                      Build quarterly BAS summaries with GST allocations for cash or accrual basis.
+                    </p>
                   </div>
-                </div>
-              </article>
-              <aside class="card card--subtle reports-grid__summary">
-                <header class="card__header">
-                  <h2 class="card__title">GST summary</h2>
-                </header>
-                <div class="card__body">
-                  <dl class="summary-list">
+                  <button class="report-card__action" data-modal-trigger="bas-modal">Open BAS Builder</button>
+                </article>
+                <article class="report-card">
+                  <div>
+                    <h2 class="report-card__title">Export Pack</h2>
+                    <p class="report-card__copy">
+                      Download invoices, expenses, trial balance, BAS, and attachments in one ZIP.
+                    </p>
+                  </div>
+                  <button class="report-card__action" data-modal-trigger="export-pack-modal">Get Export Pack</button>
+                </article>
+                <article class="report-card">
+                  <div>
+                    <h2 class="report-card__title">Profit &amp; Loss</h2>
+                    <p class="report-card__copy">
+                      Review earnings and expenses by period with gross and net totals.
+                    </p>
+                  </div>
+                  <button class="report-card__action" data-modal-trigger="profit-loss-modal">Open P&amp;L</button>
+                </article>
+                <article class="report-card">
+                  <div>
+                    <h2 class="report-card__title">Cashflow</h2>
+                    <p class="report-card__copy">
+                      Track incoming and outgoing cash by month to monitor liquidity.
+                    </p>
+                  </div>
+                  <button class="report-card__action" data-modal-trigger="cashflow-modal">View Cashflow</button>
+                </article>
+                <article class="report-card">
+                  <div>
+                    <h2 class="report-card__title">Receivables Aging</h2>
+                    <p class="report-card__copy">
+                      Identify overdue invoices across 30/60/90+ day buckets.
+                    </p>
+                  </div>
+                  <button class="report-card__action" data-modal-trigger="aging-modal">Run Aging</button>
+                </article>
+              </div>
+              <div class="report-visuals">
+                <section class="report-visuals__panel">
+                  <header>
+                    <h2>GST Trend</h2>
+                    <p>Running quarterly GST collected vs credits.</p>
+                  </header>
+                  <canvas id="gst-trend-chart" role="img" aria-label="GST running totals by quarter"></canvas>
+                  <dl class="gst-trend-summary" aria-live="polite">
                     <div>
-                      <dt>Collected GST</dt>
-                      <dd data-report="paid-gst">$0.00</dd>
+                      <dt>Total GST Collected</dt>
+                      <dd data-gst-trend="collected">$0.00</dd>
                     </div>
                     <div>
-                      <dt>Outstanding GST</dt>
-                      <dd data-report="outstanding-gst">$0.00</dd>
+                      <dt>Total GST Credits</dt>
+                      <dd data-gst-trend="credits">$0.00</dd>
                     </div>
                     <div>
-                      <dt>Total GST liability</dt>
-                      <dd data-report="total-gst">$0.00</dd>
+                      <dt>Net Liability</dt>
+                      <dd data-gst-trend="net">$0.00</dd>
                     </div>
                   </dl>
-                </div>
-              </aside>
+                </section>
+              </div>
             </div>
           </section>
 
@@ -856,8 +897,202 @@
               </div>
             </form>
           </section>
+    </div>
+  </main>
+</div>
+
+    <div class="reports-modals" data-modal-root>
+      <div
+        class="report-modal"
+        id="bas-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bas-modal-title"
+        hidden
+      >
+        <div class="report-modal__card">
+          <header class="report-modal__header">
+            <h2 id="bas-modal-title">Business Activity Statement</h2>
+            <button class="report-modal__close" type="button" data-modal-close>&times;<span class="sr-only">Close</span></button>
+          </header>
+          <form class="report-modal__form" data-bas-form>
+            <div class="form-grid">
+              <label class="form-field">
+                <span>Start date</span>
+                <input type="date" name="start" required />
+              </label>
+              <label class="form-field">
+                <span>End date</span>
+                <input type="date" name="end" required />
+              </label>
+              <label class="form-field">
+                <span>Basis</span>
+                <select name="basis">
+                  <option value="cash">Cash</option>
+                  <option value="accrual">Accrual</option>
+                </select>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-solid">Generate preview</button>
+              <p class="form-feedback" data-feedback></p>
+            </div>
+          </form>
+          <section class="report-results" aria-live="polite" data-bas-preview>
+            <div class="empty-state">Select a period to build your BAS draft.</div>
+          </section>
+          <footer class="report-modal__footer">
+            <div class="export-actions" data-bas-exports hidden>
+              <button type="button" class="btn-ghost" data-export-bas="pdf">Export PDF</button>
+              <button type="button" class="btn-ghost" data-export-bas="csv">Export CSV</button>
+              <button type="button" class="btn-ghost" data-export-bas="json">Export JSON</button>
+            </div>
+          </footer>
         </div>
-      </main>
+      </div>
+
+      <div
+        class="report-modal"
+        id="export-pack-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-pack-modal-title"
+        hidden
+      >
+        <div class="report-modal__card">
+          <header class="report-modal__header">
+            <h2 id="export-pack-modal-title">Accountant export pack</h2>
+            <button class="report-modal__close" type="button" data-modal-close>&times;<span class="sr-only">Close</span></button>
+          </header>
+          <form class="report-modal__form" data-export-pack-form>
+            <div class="form-grid">
+              <label class="form-field">
+                <span>Start date</span>
+                <input type="date" name="start" required />
+              </label>
+              <label class="form-field">
+                <span>End date</span>
+                <input type="date" name="end" required />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-solid">Download ZIP</button>
+              <p class="form-feedback" data-feedback></p>
+            </div>
+          </form>
+          <section class="report-results" aria-live="polite" data-export-pack-status>
+            <div class="empty-state">Provide a period to export your dataset.</div>
+          </section>
+        </div>
+      </div>
+
+      <div
+        class="report-modal"
+        id="profit-loss-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profit-loss-modal-title"
+        hidden
+      >
+        <div class="report-modal__card">
+          <header class="report-modal__header">
+            <h2 id="profit-loss-modal-title">Profit &amp; Loss</h2>
+            <button class="report-modal__close" type="button" data-modal-close>&times;<span class="sr-only">Close</span></button>
+          </header>
+          <form class="report-modal__form" data-profit-loss-form>
+            <div class="form-grid">
+              <label class="form-field">
+                <span>Start date</span>
+                <input type="date" name="start" required />
+              </label>
+              <label class="form-field">
+                <span>End date</span>
+                <input type="date" name="end" required />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-solid">Generate report</button>
+              <div class="export-actions" data-profit-loss-exports hidden>
+                <button type="button" class="btn-ghost" data-export-profit-loss="csv">Export CSV</button>
+                <button type="button" class="btn-ghost" data-export-profit-loss="pdf">Export PDF</button>
+                <button type="button" class="btn-ghost" data-export-profit-loss="json">Export JSON</button>
+              </div>
+              <p class="form-feedback" data-feedback></p>
+            </div>
+          </form>
+          <section class="report-results" aria-live="polite" data-profit-loss-preview>
+            <div class="empty-state">Choose a date range to view performance.</div>
+          </section>
+        </div>
+      </div>
+
+      <div
+        class="report-modal"
+        id="cashflow-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cashflow-modal-title"
+        hidden
+      >
+        <div class="report-modal__card">
+          <header class="report-modal__header">
+            <h2 id="cashflow-modal-title">Cashflow report</h2>
+            <button class="report-modal__close" type="button" data-modal-close>&times;<span class="sr-only">Close</span></button>
+          </header>
+          <form class="report-modal__form" data-cashflow-form>
+            <div class="form-grid">
+              <label class="form-field">
+                <span>Start date</span>
+                <input type="date" name="start" required />
+              </label>
+              <label class="form-field">
+                <span>End date</span>
+                <input type="date" name="end" required />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-solid">Generate report</button>
+              <div class="export-actions" data-cashflow-exports hidden>
+                <button type="button" class="btn-ghost" data-export-cashflow="csv">Export CSV</button>
+                <button type="button" class="btn-ghost" data-export-cashflow="json">Export JSON</button>
+              </div>
+              <p class="form-feedback" data-feedback></p>
+            </div>
+          </form>
+          <section class="report-results" aria-live="polite" data-cashflow-preview>
+            <div class="empty-state">Run the report to visualise cash in and out.</div>
+          </section>
+        </div>
+      </div>
+
+      <div
+        class="report-modal"
+        id="aging-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="aging-modal-title"
+        hidden
+      >
+        <div class="report-modal__card">
+          <header class="report-modal__header">
+            <h2 id="aging-modal-title">Receivables aging</h2>
+            <button class="report-modal__close" type="button" data-modal-close>&times;<span class="sr-only">Close</span></button>
+          </header>
+          <div class="report-modal__form aging-form">
+            <div class="form-actions">
+              <button type="button" class="btn-solid" data-generate-aging>Generate aging</button>
+              <div class="export-actions" data-aging-exports hidden>
+                <button type="button" class="btn-ghost" data-export-aging="csv">Export CSV</button>
+                <button type="button" class="btn-ghost" data-export-aging="json">Export JSON</button>
+              </div>
+            </div>
+            <p class="form-feedback" data-feedback></p>
+          </div>
+          <section class="report-results" aria-live="polite" data-aging-preview>
+            <div class="empty-state">Generate the aging schedule for current receivables.</div>
+          </section>
+        </div>
+      </div>
     </div>
 
     <template id="line-item-template">
@@ -897,5 +1132,2166 @@
     </template>
 
     <div class="toast-region" aria-live="polite" aria-atomic="true" data-toast-region></div>
+
+    <script>
+
+(() => {
+  'use strict';
+
+  const DB_NAME = 'zantra-ledger';
+  const DB_VERSION = 1;
+  const GST_RATE = 0.1;
+  const CURRENCY = 'AUD';
+  const currencyFormatter = new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: CURRENCY,
+    minimumFractionDigits: 2,
+  });
+  const numberFormatter = new Intl.NumberFormat('en-AU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const textEncoder = new TextEncoder();
+  const MS_PER_DAY = 86_400_000;
+
+  const state = {
+    db: null,
+    bas: null,
+    basMeta: null,
+    profitLoss: null,
+    profitLossMeta: null,
+    cashflow: null,
+    cashflowMeta: null,
+    cashflowChart: null,
+    aging: null,
+    agingMeta: null,
+  };
+
+  const toCurrency = (value) => currencyFormatter.format(Number(value || 0));
+  const formatNumber = (value) => numberFormatter.format(Number(value || 0));
+
+  const parseISODate = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    return date;
+  };
+
+  const startOfDay = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const endOfDay = (date) => {
+    const d = new Date(date);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  };
+
+  const assertDateRange = (start, end) => {
+    const startDate = parseISODate(start);
+    const endDate = parseISODate(end);
+    if (!startDate || !endDate) {
+      throw new Error('Both start and end dates are required.');
+    }
+    if (startDate > endDate) {
+      throw new Error('Start date must be before end date.');
+    }
+    return { startDate: startOfDay(startDate), endDate: endOfDay(endDate) };
+  };
+
+  const promisifyRequest = (request) =>
+    new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+  const openDatabase = () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+
+        if (!db.objectStoreNames.contains('clients')) {
+          const store = db.createObjectStore('clients', { keyPath: 'id' });
+          store.createIndex('name', 'name', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('invoices')) {
+          const store = db.createObjectStore('invoices', { keyPath: 'id' });
+          store.createIndex('clientId', 'clientId', { unique: false });
+          store.createIndex('issueDate', 'issueDate', { unique: false });
+          store.createIndex('dueDate', 'dueDate', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('payments')) {
+          const store = db.createObjectStore('payments', { keyPath: 'id' });
+          store.createIndex('invoiceId', 'invoiceId', { unique: false });
+          store.createIndex('date', 'date', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('expenses')) {
+          const store = db.createObjectStore('expenses', { keyPath: 'id' });
+          store.createIndex('date', 'date', { unique: false });
+          store.createIndex('category', 'category', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('attachments')) {
+          const store = db.createObjectStore('attachments', { keyPath: 'id' });
+          store.createIndex('entityType', 'entityType', { unique: false });
+          store.createIndex('entityId', 'entityId', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath: 'id' });
+        }
+      };
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+  const countRecords = async (db, storeName) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const count = await promisifyRequest(store.count());
+    return count || 0;
+  };
+
+
+  const seedDatabase = async (db) => {
+    const invoiceCount = await countRecords(db, 'invoices');
+    if (invoiceCount > 0) {
+      return;
+    }
+
+    const now = new Date();
+
+    const clients = [
+      {
+        id: 'client-emu-electrical',
+        name: 'Emu Electrical Co.',
+        contactName: 'Jenna McAllister',
+        email: 'accounts@emuelec.au',
+        phone: '+61 2 4102 1110',
+        address: '41 Pipeline Road, Newcastle NSW 2300',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'client-outback-resorts',
+        name: 'Outback Resorts Pty Ltd',
+        contactName: 'Samir Patel',
+        email: 'finance@outbackresorts.au',
+        phone: '+61 8 7000 9910',
+        address: '88 Dune Highway, Alice Springs NT 0870',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'client-reef-charters',
+        name: 'Reef Charters',
+        contactName: 'Casey Liu',
+        email: 'accounts@reefcharters.au',
+        phone: '+61 7 4102 5522',
+        address: 'Pier 4, Cairns QLD 4870',
+        createdAt: now.toISOString(),
+      },
+    ];
+
+    const invoices = [
+      {
+        id: 'inv-1001',
+        number: 'INV-1001',
+        clientId: 'client-emu-electrical',
+        issueDate: '2024-01-12',
+        dueDate: '2024-01-26',
+        status: 'paid',
+        lineItems: [
+          {
+            id: 'line-1001-1',
+            description: 'Three-phase solar install and compliance test',
+            quantity: 1,
+            unitPrice: 4200,
+            gstRate: GST_RATE,
+            gstCategory: 'GST',
+            incomeAccount: 'Sales: Installations',
+          },
+          {
+            id: 'line-1001-2',
+            description: 'Ongoing monitoring subscription (GST-free)',
+            quantity: 1,
+            unitPrice: 180,
+            gstRate: 0,
+            gstCategory: 'GST_FREE',
+            incomeAccount: 'Sales: Monitoring',
+          },
+        ],
+        notes: 'Includes two-year maintenance warranty.',
+        currency: CURRENCY,
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'inv-1002',
+        number: 'INV-1002',
+        clientId: 'client-outback-resorts',
+        issueDate: '2024-02-02',
+        dueDate: '2024-02-23',
+        status: 'paid',
+        lineItems: [
+          {
+            id: 'line-1002-1',
+            description: 'Generator automation retrofit',
+            quantity: 1,
+            unitPrice: 3500,
+            gstRate: GST_RATE,
+            gstCategory: 'GST',
+            incomeAccount: 'Sales: Engineering',
+          },
+          {
+            id: 'line-1002-2',
+            description: 'Export consultancy (GST-free export services)',
+            quantity: 1,
+            unitPrice: 950,
+            gstRate: 0,
+            gstCategory: 'EXPORT',
+            incomeAccount: 'Sales: Export Services',
+          },
+        ],
+        notes: 'Remote support package billed quarterly.',
+        currency: CURRENCY,
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'inv-1003',
+        number: 'INV-1003',
+        clientId: 'client-reef-charters',
+        issueDate: '2024-03-10',
+        dueDate: '2024-03-24',
+        status: 'partial',
+        lineItems: [
+          {
+            id: 'line-1003-1',
+            description: 'Battery management system upgrade',
+            quantity: 1,
+            unitPrice: 2800,
+            gstRate: GST_RATE,
+            gstCategory: 'GST',
+            incomeAccount: 'Sales: Installations',
+          },
+          {
+            id: 'line-1003-2',
+            description: 'Crew training session',
+            quantity: 1,
+            unitPrice: 620,
+            gstRate: GST_RATE,
+            gstCategory: 'GST',
+            incomeAccount: 'Sales: Training',
+          },
+        ],
+        notes: 'Final commissioning scheduled mid-April.',
+        currency: CURRENCY,
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'inv-1004',
+        number: 'INV-1004',
+        clientId: 'client-outback-resorts',
+        issueDate: '2024-04-05',
+        dueDate: '2024-04-26',
+        status: 'draft',
+        lineItems: [
+          {
+            id: 'line-1004-1',
+            description: 'On-site electrical audit',
+            quantity: 1,
+            unitPrice: 2100,
+            gstRate: GST_RATE,
+            gstCategory: 'GST',
+            incomeAccount: 'Sales: Consulting',
+          },
+          {
+            id: 'line-1004-2',
+            description: 'Export design documentation',
+            quantity: 1,
+            unitPrice: 1200,
+            gstRate: 0,
+            gstCategory: 'EXPORT',
+            incomeAccount: 'Sales: Export Services',
+          },
+        ],
+        notes: 'Awaiting purchase order approval.',
+        currency: CURRENCY,
+        createdAt: now.toISOString(),
+      },
+    ];
+
+    const payments = [
+      {
+        id: 'pay-2001',
+        invoiceId: 'inv-1001',
+        amount: 4620,
+        date: '2024-01-20',
+        method: 'Bank transfer',
+        reference: 'TT-10442',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'pay-2002',
+        invoiceId: 'inv-1002',
+        amount: 4450,
+        date: '2024-02-18',
+        method: 'Card',
+        reference: 'POS-7781',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'pay-2003',
+        invoiceId: 'inv-1003',
+        amount: 1900,
+        date: '2024-03-22',
+        method: 'Bank transfer',
+        reference: 'TT-10488',
+        createdAt: now.toISOString(),
+      },
+    ];
+
+    const expenses = [
+      {
+        id: 'exp-3001',
+        reference: 'BILL-184',
+        description: 'Supplier - lithium battery modules',
+        category: 'Cost of goods sold',
+        amount: 3300,
+        gstAmount: 300,
+        gstCategory: 'GST',
+        date: '2024-01-18',
+        vendor: 'Northern Energy Supply',
+        account: 'COGS: Battery Modules',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'exp-3002',
+        reference: 'BILL-191',
+        description: 'Fleet fuel and maintenance',
+        category: 'Operating expense',
+        amount: 880,
+        gstAmount: 80,
+        gstCategory: 'GST',
+        date: '2024-02-05',
+        vendor: 'Coastal Fuel Services',
+        account: 'Operating: Fleet',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'exp-3003',
+        reference: 'SUB-017',
+        description: 'Industry association membership (GST-free)',
+        category: 'Operating expense',
+        amount: 240,
+        gstAmount: 0,
+        gstCategory: 'GST_FREE',
+        date: '2024-03-01',
+        vendor: 'Electrical Trades Guild',
+        account: 'Operating: Subscriptions',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'exp-3004',
+        reference: 'BILL-206',
+        description: 'Export consultant fee',
+        category: 'Operating expense',
+        amount: 660,
+        gstAmount: 0,
+        gstCategory: 'EXPORT',
+        date: '2024-04-08',
+        vendor: 'Pacific Compliance Advisors',
+        account: 'Operating: Professional Services',
+        createdAt: now.toISOString(),
+      },
+    ];
+
+    const attachments = [
+      {
+        id: 'att-inv-1001',
+        entityType: 'invoice',
+        entityId: 'inv-1001',
+        filename: 'INV-1001.pdf',
+        mimeType: 'application/pdf',
+        data: 'U2FtcGxlIGludm9pY2UgUERGIHBsYWNlaG9sZGVyIGZvciBJTlYtMTAwMQ==',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'att-inv-1004',
+        entityType: 'invoice',
+        entityId: 'inv-1004',
+        filename: 'INV-1004.pdf',
+        mimeType: 'application/pdf',
+        data: 'U2FtcGxlIGludm9pY2UgUERGIHBsYWNlaG9sZGVyIGZvciBJTlYtMTAwNA==',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'att-exp-3001',
+        entityType: 'expense',
+        entityId: 'exp-3001',
+        filename: 'EXP-3001-receipt.pdf',
+        mimeType: 'application/pdf',
+        data: 'U2FtcGxlIHN1cHBsaWVyIHJlY2VpcHQgZm9yIEVYUC0wMDE=',
+        createdAt: now.toISOString(),
+      },
+      {
+        id: 'att-exp-3002',
+        entityType: 'expense',
+        entityId: 'exp-3002',
+        filename: 'EXP-3002-receipt.pdf',
+        mimeType: 'application/pdf',
+        data: 'U2FtcGxlIHN1cHBsaWVyIHJlY2VpcHQgZm9yIEVYUC0wMDI=',
+        createdAt: now.toISOString(),
+      },
+    ];
+
+    const settings = {
+      id: 'business-profile',
+      businessName: 'Zantra Field Services',
+      abn: '54 123 456 789',
+      gstRegistered: true,
+      gstRate: GST_RATE,
+      address: '12 Gridline Avenue, Sydney NSW 2000',
+      contactEmail: 'accounts@zantra.au',
+      createdAt: now.toISOString(),
+    };
+
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(
+        ['clients', 'invoices', 'payments', 'expenses', 'attachments', 'settings'],
+        'readwrite',
+      );
+      const clientStore = tx.objectStore('clients');
+      const invoiceStore = tx.objectStore('invoices');
+      const paymentStore = tx.objectStore('payments');
+      const expenseStore = tx.objectStore('expenses');
+      const attachmentStore = tx.objectStore('attachments');
+      const settingsStore = tx.objectStore('settings');
+
+      clients.forEach((record) => clientStore.add(record));
+      invoices.forEach((record) => invoiceStore.add(record));
+      payments.forEach((record) => paymentStore.add(record));
+      expenses.forEach((record) => expenseStore.add(record));
+      attachments.forEach((record) => attachmentStore.add(record));
+      settingsStore.put(settings);
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  };
+
+  const getDatabase = async () => {
+    if (state.db) {
+      return state.db;
+    }
+    const db = await openDatabase();
+    await seedDatabase(db);
+    state.db = db;
+    return db;
+  };
+
+  const getAll = async (storeName) => {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  };
+
+  const sum = (values) => values.reduce((acc, value) => acc + Number(value || 0), 0);
+
+  const calculateInvoiceTotals = (invoice) => {
+    const lines = invoice.lineItems || [];
+    const lineSummaries = lines.map((line) => {
+      const quantity = Number(line.quantity || 0);
+      const unitPrice = Number(line.unitPrice || 0);
+      const lineNet = quantity * unitPrice;
+      const gstRate = Number(line.gstRate || 0);
+      const gstAmount = line.gstCategory === 'GST' ? Number((lineNet * gstRate).toFixed(2)) : 0;
+      return {
+        ...line,
+        quantity,
+        unitPrice,
+        lineNet,
+        gstAmount,
+        total: lineNet + gstAmount,
+      };
+    });
+
+    const net = sum(lineSummaries.map((line) => line.lineNet));
+    const gst = sum(lineSummaries.map((line) => line.gstAmount));
+    const total = net + gst;
+
+    return { net, gst, total, lines: lineSummaries };
+  };
+
+  const mapById = (records) => {
+    const map = new Map();
+    records.forEach((record) => {
+      if (record && record.id) {
+        map.set(record.id, record);
+      }
+    });
+    return map;
+  };
+
+  const filterByDateRange = (records, field, startDate, endDate) =>
+    records.filter((record) => {
+      const value = record?.[field];
+      const date = parseISODate(value);
+      if (!date) return false;
+      return date >= startDate && date <= endDate;
+    });
+
+  const allocateByRatio = (items, ratio) => items.map((item) => ({
+    ...item,
+    lineNet: Number((item.lineNet * ratio).toFixed(2)),
+    gstAmount: Number((item.gstAmount * ratio).toFixed(2)),
+    total: Number((item.total * ratio).toFixed(2)),
+  }));
+
+  const buildBASBoxes = (lines) => {
+    const totals = {
+      G1: 0,
+      G2: 0,
+      G3: 0,
+      '1A': 0,
+      '1B': 0,
+    };
+
+    lines.forEach((line) => {
+      totals.G1 += line.total;
+      if (line.gstCategory === 'EXPORT') {
+        totals.G2 += line.lineNet;
+      }
+      if (line.gstCategory === 'GST_FREE') {
+        totals.G3 += line.lineNet;
+      }
+      if (line.gstCategory === 'GST') {
+        totals['1A'] += line.gstAmount;
+      }
+    });
+
+    return totals;
+  };
+
+
+  const generateBASReport = async (start, end, basis = 'cash') => {
+    const { startDate, endDate } = assertDateRange(start, end);
+    const [invoices, payments, expenses] = await Promise.all([
+      getAll('invoices'),
+      getAll('payments'),
+      getAll('expenses'),
+    ]);
+    const invoiceMap = mapById(invoices);
+
+    const basisLabel = basis === 'accrual' ? 'Accrual' : 'Cash';
+    const appliedLines = [];
+
+    if (basis === 'cash') {
+      const relevantPayments = payments.filter((payment) => {
+        const date = parseISODate(payment.date);
+        return date && date >= startDate && date <= endDate;
+      });
+
+      relevantPayments.forEach((payment) => {
+        const invoice = invoiceMap.get(payment.invoiceId);
+        if (!invoice) return;
+        const totals = calculateInvoiceTotals(invoice);
+        if (totals.total === 0) return;
+        const ratio = Math.min(payment.amount / totals.total, 1);
+        const lines = allocateByRatio(totals.lines, ratio);
+        lines.forEach((line) => {
+          appliedLines.push({
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.number,
+            clientId: invoice.clientId,
+            gstCategory: line.gstCategory,
+            lineNet: line.lineNet,
+            gstAmount: line.gstAmount,
+            total: line.total,
+          });
+        });
+      });
+    } else {
+      const filteredInvoices = invoices.filter((invoice) => {
+        const issueDate = parseISODate(invoice.issueDate);
+        return issueDate && issueDate >= startDate && issueDate <= endDate;
+      });
+      filteredInvoices.forEach((invoice) => {
+        const totals = calculateInvoiceTotals(invoice);
+        totals.lines.forEach((line) => {
+          appliedLines.push({
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.number,
+            clientId: invoice.clientId,
+            gstCategory: line.gstCategory,
+            lineNet: line.lineNet,
+            gstAmount: line.gstAmount,
+            total: line.total,
+          });
+        });
+      });
+    }
+
+    const expenseLines = expenses
+      .filter((expense) => {
+        const date = parseISODate(expense.date);
+        return date && date >= startDate && date <= endDate;
+      })
+      .map((expense) => ({
+        expenseId: expense.id,
+        gstAmount: Number(expense.gstAmount || 0),
+        amount: Number(expense.amount || 0),
+        gstCategory: expense.gstCategory || 'GST',
+      }));
+
+    const basBoxes = buildBASBoxes(appliedLines);
+    const credits = sum(expenseLines.map((expense) => expense.gstAmount));
+    basBoxes['1B'] = credits;
+
+    const totals = {
+      sales: sum(appliedLines.map((line) => line.lineNet)),
+      gstCollected: basBoxes['1A'],
+      gstCredits: basBoxes['1B'],
+      netGST: basBoxes['1A'] - basBoxes['1B'],
+    };
+
+    return {
+      basis: basisLabel,
+      period: { start: startDate.toISOString(), end: endDate.toISOString() },
+      lines: appliedLines,
+      expenseLines,
+      boxes: basBoxes,
+      totals,
+    };
+  };
+
+  const generateProfitLoss = async (start, end) => {
+    const { startDate, endDate } = assertDateRange(start, end);
+    const [invoices, expenses] = await Promise.all([
+      getAll('invoices'),
+      getAll('expenses'),
+    ]);
+
+    const filteredInvoices = filterByDateRange(invoices, 'issueDate', startDate, endDate);
+    const incomeByAccount = new Map();
+
+    filteredInvoices.forEach((invoice) => {
+      const totals = calculateInvoiceTotals(invoice);
+      totals.lines.forEach((line) => {
+        const key = line.incomeAccount || 'Sales';
+        const current = incomeByAccount.get(key) || 0;
+        incomeByAccount.set(key, current + line.lineNet);
+      });
+    });
+
+    const expenseByAccount = new Map();
+    const filteredExpenses = filterByDateRange(expenses, 'date', startDate, endDate);
+
+    filteredExpenses.forEach((expense) => {
+      const key = expense.account || expense.category || 'Expenses';
+      const netAmount = Number(expense.amount || 0) - Number(expense.gstAmount || 0);
+      const current = expenseByAccount.get(key) || 0;
+      expenseByAccount.set(key, current + netAmount);
+    });
+
+    const incomeTotal = Array.from(incomeByAccount.values()).reduce((acc, value) => acc + value, 0);
+    const expenseTotal = Array.from(expenseByAccount.values()).reduce((acc, value) => acc + value, 0);
+    const netProfit = incomeTotal - expenseTotal;
+
+    const incomeRows = Array.from(incomeByAccount.entries()).map(([account, value]) => ({
+      account,
+      amount: Number(value.toFixed(2)),
+    }));
+
+    const expenseRows = Array.from(expenseByAccount.entries()).map(([account, value]) => ({
+      account,
+      amount: Number(value.toFixed(2)),
+    }));
+
+    return {
+      period: { start: startDate.toISOString(), end: endDate.toISOString() },
+      income: incomeRows,
+      expenses: expenseRows,
+      totals: {
+        income: Number(incomeTotal.toFixed(2)),
+        expenses: Number(expenseTotal.toFixed(2)),
+        net: Number(netProfit.toFixed(2)),
+      },
+    };
+  };
+
+  const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+  const generateCashflow = async (start, end) => {
+    const { startDate, endDate } = assertDateRange(start, end);
+    const [payments, expenses] = await Promise.all([getAll('payments'), getAll('expenses')]);
+
+    const incomeMap = new Map();
+    const relevantPayments = payments.filter((payment) => {
+      const date = parseISODate(payment.date);
+      return date && date >= startDate && date <= endDate;
+    });
+
+    relevantPayments.forEach((payment) => {
+      const date = parseISODate(payment.date);
+      const key = monthKey(date);
+      const current = incomeMap.get(key) || 0;
+      incomeMap.set(key, current + Number(payment.amount || 0));
+    });
+
+    const expenseMap = new Map();
+    const relevantExpenses = expenses.filter((expense) => {
+      const date = parseISODate(expense.date);
+      return date && date >= startDate && date <= endDate;
+    });
+
+    relevantExpenses.forEach((expense) => {
+      const date = parseISODate(expense.date);
+      const key = monthKey(date);
+      const current = expenseMap.get(key) || 0;
+      expenseMap.set(key, current + Number(expense.amount || 0));
+    });
+
+    const months = new Set([...incomeMap.keys(), ...expenseMap.keys()]);
+    const sortedMonths = Array.from(months).sort();
+
+    const rows = sortedMonths.map((key) => {
+      const [year, month] = key.split('-');
+      const labelDate = new Date(Number(year), Number(month) - 1, 1);
+      const label = labelDate.toLocaleString('en-AU', { month: 'short', year: 'numeric' });
+      const cashIn = Number((incomeMap.get(key) || 0).toFixed(2));
+      const cashOut = Number((expenseMap.get(key) || 0).toFixed(2));
+      return {
+        key,
+        label,
+        cashIn,
+        cashOut,
+        net: Number((cashIn - cashOut).toFixed(2)),
+      };
+    });
+
+    const totals = {
+      cashIn: Number(sum(rows.map((row) => row.cashIn)).toFixed(2)),
+      cashOut: Number(sum(rows.map((row) => row.cashOut)).toFixed(2)),
+      net: Number(sum(rows.map((row) => row.net)).toFixed(2)),
+    };
+
+    return {
+      period: { start: startDate.toISOString(), end: endDate.toISOString() },
+      rows,
+      totals,
+    };
+  };
+
+  const generateAgingReport = async () => {
+    const [invoices, payments, clients] = await Promise.all([
+      getAll('invoices'),
+      getAll('payments'),
+      getAll('clients'),
+    ]);
+
+    const paymentsByInvoice = new Map();
+    payments.forEach((payment) => {
+      const list = paymentsByInvoice.get(payment.invoiceId) || [];
+      list.push(payment);
+      paymentsByInvoice.set(payment.invoiceId, list);
+    });
+
+    const clientMap = mapById(clients);
+    const buckets = [
+      { label: 'Current', range: 'Not yet due', min: -Infinity, max: 0, total: 0 },
+      { label: '1-30 days', range: '1-30 days overdue', min: 1, max: 30, total: 0 },
+      { label: '31-60 days', range: '31-60 days overdue', min: 31, max: 60, total: 0 },
+      { label: '61-90 days', range: '61-90 days overdue', min: 61, max: 90, total: 0 },
+      { label: '90+ days', range: 'More than 90 days overdue', min: 91, max: Infinity, total: 0 },
+    ];
+
+    const details = [];
+    const today = startOfDay(new Date());
+
+    invoices.forEach((invoice) => {
+      const totals = calculateInvoiceTotals(invoice);
+      const paymentsForInvoice = paymentsByInvoice.get(invoice.id) || [];
+      const paid = sum(paymentsForInvoice.map((payment) => Number(payment.amount || 0)));
+      const outstanding = Number((totals.total - paid).toFixed(2));
+      if (outstanding <= 0.01) {
+        return;
+      }
+
+      const dueDate = parseISODate(invoice.dueDate || invoice.issueDate);
+      const daysPastDue = dueDate ? Math.floor((today - dueDate) / MS_PER_DAY) : 0;
+      const bucket = buckets.find((entry) => daysPastDue >= entry.min && daysPastDue <= entry.max) || buckets[buckets.length - 1];
+      bucket.total += outstanding;
+
+      details.push({
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.number,
+        clientId: invoice.clientId,
+        clientName: clientMap.get(invoice.clientId)?.name || 'Unknown client',
+        dueDate: dueDate ? dueDate.toISOString() : null,
+        daysPastDue,
+        bucket: bucket.label,
+        outstanding,
+      });
+    });
+
+    const totalOutstanding = Number(sum(details.map((item) => item.outstanding)).toFixed(2));
+
+    return {
+      generatedAt: new Date().toISOString(),
+      buckets: buckets.map((bucket) => ({
+        label: bucket.label,
+        range: bucket.range,
+        total: Number(bucket.total.toFixed(2)),
+      })),
+      details,
+      totals: {
+        outstanding: totalOutstanding,
+      },
+    };
+  };
+
+  const groupByQuarter = (date) => {
+    const year = date.getFullYear();
+    const quarter = Math.floor(date.getMonth() / 3) + 1;
+    return `${year} Q${quarter}`;
+  };
+
+  const generateGSTTrend = async () => {
+    const [invoices, expenses] = await Promise.all([getAll('invoices'), getAll('expenses')]);
+    const quarterMap = new Map();
+
+    invoices.forEach((invoice) => {
+      const issueDate = parseISODate(invoice.issueDate);
+      if (!issueDate) return;
+      const totals = calculateInvoiceTotals(invoice);
+      const key = groupByQuarter(issueDate);
+      const entry = quarterMap.get(key) || { collected: 0, credits: 0 };
+      entry.collected += totals.gst;
+      quarterMap.set(key, entry);
+    });
+
+    expenses.forEach((expense) => {
+      const date = parseISODate(expense.date);
+      if (!date) return;
+      const key = groupByQuarter(date);
+      const entry = quarterMap.get(key) || { collected: 0, credits: 0 };
+      entry.credits += Number(expense.gstAmount || 0);
+      quarterMap.set(key, entry);
+    });
+
+    const sorted = Array.from(quarterMap.entries()).sort(([a], [b]) => (a > b ? 1 : -1));
+
+    const labels = [];
+    const collected = [];
+    const credits = [];
+    const net = [];
+    let runningCollected = 0;
+    let runningCredits = 0;
+
+    sorted.forEach(([label, values]) => {
+      runningCollected += Number(values.collected || 0);
+      runningCredits += Number(values.credits || 0);
+      labels.push(label);
+      collected.push(Number(runningCollected.toFixed(2)));
+      credits.push(Number(runningCredits.toFixed(2)));
+      net.push(Number((runningCollected - runningCredits).toFixed(2)));
+    });
+
+    return {
+      labels,
+      collected,
+      credits,
+      net,
+      totals: {
+        collected: collected.length ? collected[collected.length - 1] : 0,
+        credits: credits.length ? credits[credits.length - 1] : 0,
+        net: net.length ? net[net.length - 1] : 0,
+      },
+    };
+  };
+
+
+  const escapeCSVValue = (value) => {
+    if (value == null) {
+      return '';
+    }
+    const stringValue = String(value);
+    if (/[,"
+]/.test(stringValue)) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
+  const createCSV = (headers, rows) => {
+    const lines = [];
+    lines.push(headers.map(escapeCSVValue).join(','));
+    rows.forEach((row) => {
+      lines.push(headers.map((header) => escapeCSVValue(row[header])).join(','));
+    });
+    return lines.join('
+');
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = 'noopener';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const base64ToUint8Array = (base64) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  };
+
+  class ZipArchive {
+    constructor() {
+      this.files = [];
+    }
+
+    addFile(name, input, options = {}) {
+      if (!name) throw new Error('Filename is required');
+      let data;
+      if (typeof input === 'string') {
+        data = textEncoder.encode(input);
+      } else if (input instanceof Uint8Array) {
+        data = input;
+      } else if (input instanceof ArrayBuffer) {
+        data = new Uint8Array(input);
+      } else {
+        throw new Error('Unsupported file data type.');
+      }
+
+      const date = options.date ? new Date(options.date) : new Date();
+      const { dosDate, dosTime } = ZipArchive.toDosDateTime(date);
+      const crc32 = ZipArchive.crc32(data);
+
+      this.files.push({
+        name,
+        data,
+        crc32,
+        dosDate,
+        dosTime,
+      });
+    }
+
+    static toDosDateTime(date) {
+      const year = Math.max(0, date.getFullYear() - 1980);
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = Math.floor(date.getSeconds() / 2);
+
+      const dosDate = (year << 9) | (month << 5) | day;
+      const dosTime = (hours << 11) | (minutes << 5) | seconds;
+      return { dosDate, dosTime };
+    }
+
+    static crc32(data) {
+      let crc = 0 ^ -1;
+      for (let i = 0; i < data.length; i += 1) {
+        const byte = data[i];
+        crc = (crc >>> 8) ^ ZipArchive.crcTable[(crc ^ byte) & 0xff];
+      }
+      return (crc ^ -1) >>> 0;
+    }
+
+    generate() {
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
+
+      this.files.forEach((file) => {
+        const nameBytes = textEncoder.encode(file.name);
+        const localHeader = new Uint8Array(30);
+        const view = new DataView(localHeader.buffer);
+        view.setUint32(0, 0x04034b50, true);
+        view.setUint16(4, 20, true);
+        view.setUint16(6, 0, true);
+        view.setUint16(8, 0, true);
+        view.setUint16(10, file.dosTime, true);
+        view.setUint16(12, file.dosDate, true);
+        view.setUint32(14, file.crc32 >>> 0, true);
+        view.setUint32(18, file.data.length, true);
+        view.setUint32(22, file.data.length, true);
+        view.setUint16(26, nameBytes.length, true);
+        view.setUint16(28, 0, true);
+
+        localParts.push(localHeader, nameBytes, file.data);
+        file.offset = offset;
+        offset += localHeader.length + nameBytes.length + file.data.length;
+
+        const centralHeader = new Uint8Array(46);
+        const centralView = new DataView(centralHeader.buffer);
+        centralView.setUint32(0, 0x02014b50, true);
+        centralView.setUint16(4, 0x0314, true);
+        centralView.setUint16(6, 20, true);
+        centralView.setUint16(8, 0, true);
+        centralView.setUint16(10, 0, true);
+        centralView.setUint16(12, file.dosTime, true);
+        centralView.setUint16(14, file.dosDate, true);
+        centralView.setUint32(16, file.crc32 >>> 0, true);
+        centralView.setUint32(20, file.data.length, true);
+        centralView.setUint32(24, file.data.length, true);
+        centralView.setUint16(28, nameBytes.length, true);
+        centralView.setUint16(30, 0, true);
+        centralView.setUint16(32, 0, true);
+        centralView.setUint16(34, 0, true);
+        centralView.setUint16(36, 0, true);
+        centralView.setUint32(38, 0, true);
+        centralView.setUint32(42, file.offset, true);
+
+        centralParts.push(centralHeader, nameBytes);
+      });
+
+      const centralSize = centralParts.reduce((acc, part) => acc + part.length, 0);
+      const centralOffset = offset;
+      const fileCount = this.files.length;
+
+      const endRecord = new Uint8Array(22);
+      const endView = new DataView(endRecord.buffer);
+      endView.setUint32(0, 0x06054b50, true);
+      endView.setUint16(4, 0, true);
+      endView.setUint16(6, 0, true);
+      endView.setUint16(8, fileCount, true);
+      endView.setUint16(10, fileCount, true);
+      endView.setUint32(12, centralSize, true);
+      endView.setUint32(16, centralOffset, true);
+      endView.setUint16(20, 0, true);
+
+      return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/zip' });
+    }
+  }
+
+  ZipArchive.crcTable = (() => {
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i += 1) {
+      let c = i;
+      for (let j = 0; j < 8; j += 1) {
+        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      }
+      table[i] = c >>> 0;
+    }
+    return table;
+  })();
+
+  class SimplePDF {
+    constructor() {
+      this.commands = [];
+    }
+
+    text(text, x, y, options = {}) {
+      const size = options.size || 12;
+      const color = options.color || '0 0 0';
+      const escaped = String(text)
+        .replace(/\/g, '\\')
+        .replace(/\(/g, '\(')
+        .replace(/\)/g, '\)');
+      this.commands.push(`BT /F1 ${size} Tf ${color} rg 1 0 0 1 ${x} ${y} Tm (${escaped}) Tj ET`);
+    }
+
+    toBlob() {
+      const header = '%PDF-1.4
+';
+      const objects = [];
+      const contentString = this.commands.join('
+');
+      const contentBytes = textEncoder.encode(contentString);
+
+      objects.push('1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+');
+      objects.push('2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+');
+      objects.push('3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+');
+      objects.push('4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+');
+
+      const streamHeader = `5 0 obj
+<< /Length ${contentBytes.length} >>
+stream
+`;
+      const streamFooter = '
+endstream
+endobj
+';
+
+      let offset = header.length;
+      const offsets = [0];
+      const parts = [textEncoder.encode(header)];
+
+      objects.forEach((object, index) => {
+        offsets[index + 1] = offset;
+        const bytes = textEncoder.encode(object);
+        parts.push(bytes);
+        offset += bytes.length;
+      });
+
+      offsets[5] = offset;
+      parts.push(textEncoder.encode(streamHeader));
+      parts.push(contentBytes);
+      parts.push(textEncoder.encode(streamFooter));
+      offset += streamHeader.length + contentBytes.length + streamFooter.length;
+
+      const xrefOffset = offset;
+      const xrefLines = ['xref', '0 6', '0000000000 65535 f '];
+      for (let i = 1; i <= 5; i += 1) {
+        xrefLines.push(`${String(offsets[i]).padStart(10, '0')} 00000 n `);
+      }
+
+      const trailer = [
+        'trailer',
+        '<< /Size 6 /Root 1 0 R >>',
+        'startxref',
+        String(xrefOffset),
+        '%%EOF',
+      ].join('
+');
+
+      parts.push(textEncoder.encode(`${xrefLines.join('
+')}
+`));
+      parts.push(textEncoder.encode(trailer));
+
+      return new Blob(parts, { type: 'application/pdf' });
+    }
+  }
+
+
+  const buildBASPreviewTable = (data) => {
+    const rows = [
+      { code: 'G1', label: 'Total sales', value: data.boxes.G1 },
+      { code: 'G2', label: 'Export sales', value: data.boxes.G2 },
+      { code: 'G3', label: 'Other GST-free sales', value: data.boxes.G3 },
+      { code: '1A', label: 'GST on sales', value: data.boxes['1A'] },
+      { code: '1B', label: 'GST on purchases', value: data.boxes['1B'] },
+    ];
+
+    const table = document.createElement('table');
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th scope="col">Box</th>
+          <th scope="col">Description</th>
+          <th scope="col" class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <th scope="row">${row.code}</th>
+                <td>${row.label}</td>
+                <td class="text-right">${toCurrency(row.value)}</td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    `;
+
+    return table;
+  };
+
+  const renderBASPreview = (data, meta) => {
+    const container = document.querySelector('[data-bas-preview]');
+    const exportContainer = document.querySelector('[data-bas-exports]');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const summary = document.createElement('div');
+    summary.className = 'report-summary';
+    const startDate = new Date(meta.start);
+    const endDate = new Date(meta.end);
+    summary.innerHTML = `
+      <p><strong>Basis:</strong> ${data.basis}</p>
+      <p><strong>Period:</strong> ${startDate.toLocaleDateString('en-AU')} to ${endDate.toLocaleDateString('en-AU')}</p>
+      <p><strong>Net GST:</strong> ${toCurrency(data.totals.netGST)}</p>
+    `;
+
+    container.append(summary);
+    container.append(buildBASPreviewTable(data));
+
+    const totals = document.createElement('div');
+    totals.innerHTML = `
+      <p><strong>Total taxable sales:</strong> ${toCurrency(data.totals.sales)}</p>
+      <p><strong>GST collected:</strong> ${toCurrency(data.totals.gstCollected)}</p>
+      <p><strong>GST credits:</strong> ${toCurrency(data.totals.gstCredits)}</p>
+    `;
+    container.append(totals);
+
+    if (exportContainer) {
+      exportContainer.hidden = false;
+    }
+  };
+
+  const renderProfitLossPreview = (data) => {
+    const container = document.querySelector('[data-profit-loss-preview]');
+    const exportContainer = document.querySelector('[data-profit-loss-exports]');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const summary = document.createElement('div');
+    summary.innerHTML = `
+      <p><strong>Total income:</strong> ${toCurrency(data.totals.income)}</p>
+      <p><strong>Total expenses:</strong> ${toCurrency(data.totals.expenses)}</p>
+      <p><strong>Net profit:</strong> ${toCurrency(data.totals.net)}</p>
+    `;
+
+    const buildTable = (caption, rows) => {
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <caption>${caption}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Account</th>
+            <th scope="col" class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (row) => `
+                <tr>
+                  <th scope="row">${row.account}</th>
+                  <td class="text-right">${toCurrency(row.amount)}</td>
+                </tr>
+              `,
+            )
+            .join('')}
+        </tbody>
+      `;
+      return table;
+    };
+
+    container.append(summary, buildTable('Income', data.income), buildTable('Expenses', data.expenses));
+    if (exportContainer) {
+      exportContainer.hidden = false;
+    }
+  };
+
+  const renderCashflowPreview = (data) => {
+    const container = document.querySelector('[data-cashflow-preview]');
+    const exportContainer = document.querySelector('[data-cashflow-exports]');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (state.cashflowChart) {
+      state.cashflowChart.destroy();
+      state.cashflowChart = null;
+    }
+
+    if (!data.rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'No cashflow activity for the selected period.';
+      container.append(empty);
+    } else {
+      const chartFrame = document.createElement('div');
+      chartFrame.className = 'chart-frame';
+      const canvas = document.createElement('canvas');
+      chartFrame.append(canvas);
+      container.append(chartFrame);
+
+      if (window.Chart) {
+        const labels = data.rows.map((row) => row.label);
+        const cashIn = data.rows.map((row) => Number(row.cashIn || 0));
+        const cashOut = data.rows.map((row) => Number(row.cashOut || 0));
+        const net = data.rows.map((row) => Number(row.net || 0));
+
+        state.cashflowChart = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                type: 'bar',
+                label: 'Cash in',
+                data: cashIn,
+                backgroundColor: 'rgba(0, 198, 215, 0.6)',
+                borderColor: 'rgba(0, 198, 215, 0.9)',
+                borderRadius: 6,
+                maxBarThickness: 36,
+              },
+              {
+                type: 'bar',
+                label: 'Cash out',
+                data: cashOut,
+                backgroundColor: 'rgba(255, 111, 60, 0.6)',
+                borderColor: 'rgba(255, 111, 60, 0.9)',
+                borderRadius: 6,
+                maxBarThickness: 36,
+              },
+              {
+                type: 'line',
+                label: 'Net cash',
+                data: net,
+                borderColor: 'rgba(246, 247, 251, 1)',
+                backgroundColor: 'rgba(246, 247, 251, 0.2)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                ticks: {
+                  color: 'rgba(246, 247, 251, 0.85)',
+                },
+                grid: {
+                  display: false,
+                },
+              },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  color: 'rgba(246, 247, 251, 0.85)',
+                  callback: (value) => toCurrency(value),
+                },
+                grid: {
+                  color: 'rgba(246, 247, 251, 0.12)',
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: 'rgba(246, 247, 251, 0.85)',
+                },
+              },
+              tooltip: {
+                callbacks: {
+                  label: (context) => {
+                    const rawValue = context.parsed.y ?? context.parsed;
+                    return `${context.dataset.label}: ${toCurrency(rawValue)}`;
+                  },
+                },
+              },
+            },
+          },
+        });
+      } else {
+        const fallback = document.createElement('div');
+        fallback.className = 'empty-state';
+        fallback.textContent = 'Chart preview unavailable (Chart.js failed to load).';
+        chartFrame.replaceChildren(fallback);
+      }
+
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th scope="col">Month</th>
+            <th scope="col" class="text-right">Cash in</th>
+            <th scope="col" class="text-right">Cash out</th>
+            <th scope="col" class="text-right">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.rows
+            .map(
+              (row) => `
+                <tr>
+                  <th scope="row">${row.label}</th>
+                  <td class="text-right">${toCurrency(row.cashIn)}</td>
+                  <td class="text-right">${toCurrency(row.cashOut)}</td>
+                  <td class="text-right">${toCurrency(row.net)}</td>
+                </tr>
+              `,
+            )
+            .join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total</th>
+            <td class="text-right">${toCurrency(data.totals.cashIn)}</td>
+            <td class="text-right">${toCurrency(data.totals.cashOut)}</td>
+            <td class="text-right">${toCurrency(data.totals.net)}</td>
+          </tr>
+        </tfoot>
+      `;
+
+      container.append(table);
+    }
+    if (exportContainer) {
+      exportContainer.hidden = false;
+    }
+  };
+
+  const renderAgingPreview = (data) => {
+    const container = document.querySelector('[data-aging-preview]');
+    const exportContainer = document.querySelector('[data-aging-exports]');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const summaryTable = document.createElement('table');
+    summaryTable.innerHTML = `
+      <thead>
+        <tr>
+          <th scope="col">Bucket</th>
+          <th scope="col">Range</th>
+          <th scope="col" class="text-right">Outstanding</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.buckets
+          .map(
+            (bucket) => `
+              <tr>
+                <th scope="row">${bucket.label}</th>
+                <td>${bucket.range}</td>
+                <td class="text-right">${toCurrency(bucket.total)}</td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th scope="row">Total outstanding</th>
+          <td></td>
+          <td class="text-right">${toCurrency(data.totals.outstanding)}</td>
+        </tr>
+      </tfoot>
+    `;
+
+    container.append(summaryTable);
+
+    if (data.details.length) {
+      const detailTable = document.createElement('table');
+      detailTable.innerHTML = `
+        <caption>Open invoices</caption>
+        <thead>
+          <tr>
+            <th scope="col">Invoice</th>
+            <th scope="col">Client</th>
+            <th scope="col">Due date</th>
+            <th scope="col" class="text-right">Days past due</th>
+            <th scope="col" class="text-right">Outstanding</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.details
+            .map((item) => {
+              const dueLabel = item.dueDate
+                ? new Date(item.dueDate).toLocaleDateString('en-AU')
+                : '—';
+              return `
+                <tr>
+                  <th scope="row">${item.invoiceNumber}</th>
+                  <td>${item.clientName}</td>
+                  <td>${dueLabel}</td>
+                  <td class="text-right">${item.daysPastDue > 0 ? item.daysPastDue : 0}</td>
+                  <td class="text-right">${toCurrency(item.outstanding)}</td>
+                </tr>
+              `;
+            })
+            .join('')}
+        </tbody>
+      `;
+      container.append(detailTable);
+    }
+
+    if (exportContainer) {
+      exportContainer.hidden = false;
+    }
+  };
+
+  const renderGSTTrendChart = async () => {
+    const canvas = document.getElementById('gst-trend-chart');
+    if (!canvas) return;
+    const context = canvas.getContext('2d');
+    const data = await generateGSTTrend();
+
+    const ratio = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth || 600;
+    const height = canvas.clientHeight || 280;
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    context.scale(ratio, ratio);
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = 'rgba(255,255,255,0.08)';
+    context.fillRect(0, 0, width, height);
+
+    if (!data.labels.length) {
+      context.fillStyle = '#f6f7fb';
+      context.font = '16px Barlow, sans-serif';
+      context.fillText('No GST data available yet.', 24, height / 2);
+      return;
+    }
+
+    const padding = { top: 24, right: 24, bottom: 36, left: 56 };
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+
+    const maxValue = Math.max(...data.collected, ...data.credits, ...data.net, 1);
+    const scaleY = (value) => padding.top + plotHeight - (value / maxValue) * plotHeight;
+    const scaleX = (index) => padding.left + (plotWidth / Math.max(1, data.labels.length - 1)) * index;
+
+    context.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    context.lineWidth = 1;
+    const gridSteps = 4;
+    for (let i = 0; i <= gridSteps; i += 1) {
+      const y = padding.top + (plotHeight / gridSteps) * i;
+      context.beginPath();
+      context.moveTo(padding.left, y);
+      context.lineTo(width - padding.right, y);
+      context.stroke();
+
+      const value = maxValue - (maxValue / gridSteps) * i;
+      context.fillStyle = 'rgba(246, 247, 251, 0.6)';
+      context.font = '12px Barlow, sans-serif';
+      context.textAlign = 'right';
+      context.fillText(toCurrency(value), padding.left - 8, y + 4);
+    }
+
+    const drawLine = (values, color) => {
+      context.beginPath();
+      context.lineWidth = 2;
+      context.strokeStyle = color;
+      values.forEach((value, index) => {
+        const x = scaleX(index);
+        const y = scaleY(value);
+        if (index === 0) {
+          context.moveTo(x, y);
+        } else {
+          context.lineTo(x, y);
+        }
+      });
+      context.stroke();
+    };
+
+    drawLine(data.collected, '#ff6f3c');
+    drawLine(data.credits, '#00c6d7');
+    drawLine(data.net, '#f6f7fb');
+
+    context.fillStyle = '#f6f7fb';
+    context.font = '12px Barlow, sans-serif';
+    context.textAlign = 'center';
+    data.labels.forEach((label, index) => {
+      const x = scaleX(index);
+      context.fillText(label, x, height - padding.bottom + 16);
+    });
+
+    document.querySelector('[data-gst-trend="collected"]').textContent = toCurrency(data.totals.collected);
+    document.querySelector('[data-gst-trend="credits"]').textContent = toCurrency(data.totals.credits);
+    document.querySelector('[data-gst-trend="net"]').textContent = toCurrency(data.totals.net);
+  };
+
+
+  const createBASPdf = (data, meta) => {
+    const pdf = new SimplePDF();
+    let y = 790;
+    pdf.text('Business Activity Statement (Draft)', 64, y, { size: 18 });
+    y -= 28;
+    pdf.text(`Basis: ${data.basis}`, 64, y, { size: 12 });
+    y -= 18;
+    const periodLabel = `${new Date(meta.start).toLocaleDateString('en-AU')} to ${new Date(meta.end).toLocaleDateString('en-AU')}`;
+    pdf.text(`Period: ${periodLabel}`, 64, y, { size: 12 });
+    y -= 30;
+
+    const rows = [
+      ['G1 Total sales', toCurrency(data.boxes.G1)],
+      ['G2 Export sales', toCurrency(data.boxes.G2)],
+      ['G3 Other GST-free sales', toCurrency(data.boxes.G3)],
+      ['1A GST on sales', toCurrency(data.boxes['1A'])],
+      ['1B GST on purchases', toCurrency(data.boxes['1B'])],
+      ['Net GST', toCurrency(data.totals.netGST)],
+    ];
+
+    rows.forEach(([label, value]) => {
+      pdf.text(label, 64, y, { size: 12 });
+      pdf.text(value, 340, y, { size: 12 });
+      y -= 18;
+    });
+
+    y -= 12;
+    pdf.text('Generated by Zantra Invoicing Reports', 64, y, { size: 10 });
+
+    return pdf.toBlob();
+  };
+
+  const createProfitLossPdf = (data, meta) => {
+    const pdf = new SimplePDF();
+    let y = 790;
+    pdf.text('Profit & Loss Statement', 64, y, { size: 18 });
+    y -= 28;
+
+    const periodStart = meta?.start || data?.period?.start;
+    const periodEnd = meta?.end || data?.period?.end;
+    const periodLabel =
+      periodStart && periodEnd
+        ? `${new Date(periodStart).toLocaleDateString('en-AU')} to ${new Date(periodEnd).toLocaleDateString('en-AU')}`
+        : 'Not specified';
+    pdf.text(`Period: ${periodLabel}`, 64, y, { size: 12 });
+    y -= 18;
+    pdf.text(`Generated: ${new Date().toLocaleString('en-AU')}`, 64, y, { size: 12 });
+    y -= 24;
+
+    const writeSection = (title, rows) => {
+      pdf.text(title, 64, y, { size: 14 });
+      y -= 18;
+      if (!rows.length) {
+        pdf.text('No activity recorded.', 64, y, { size: 12 });
+        y -= 16;
+        return;
+      }
+      rows.forEach((row) => {
+        pdf.text(row.account, 64, y, { size: 12 });
+        pdf.text(toCurrency(row.amount), 360, y, { size: 12 });
+        y -= 16;
+      });
+      y -= 12;
+    };
+
+    writeSection('Income', data.income);
+    writeSection('Expenses', data.expenses);
+
+    pdf.text(`Total income: ${toCurrency(data.totals.income)}`, 64, y, { size: 12 });
+    y -= 16;
+    pdf.text(`Total expenses: ${toCurrency(data.totals.expenses)}`, 64, y, { size: 12 });
+    y -= 16;
+    pdf.text(`Net profit: ${toCurrency(data.totals.net)}`, 64, y, { size: 12 });
+    y -= 16;
+
+    pdf.text('Generated by Zantra Invoicing Reports', 64, y, { size: 10 });
+
+    return pdf.toBlob();
+  };
+
+  const exportBAS = (format) => {
+    if (!state.bas || !state.basMeta) {
+      throw new Error('Generate a BAS report first.');
+    }
+    const meta = state.basMeta;
+    const filenameBase = `BAS-${meta.start}-${meta.end}`;
+    if (format === 'pdf') {
+      const blob = createBASPdf(state.bas, meta);
+      downloadBlob(blob, `${filenameBase}.pdf`);
+      return;
+    }
+    if (format === 'csv') {
+      const rows = [
+        { Box: 'G1', Value: state.bas.boxes.G1 },
+        { Box: 'G2', Value: state.bas.boxes.G2 },
+        { Box: 'G3', Value: state.bas.boxes.G3 },
+        { Box: '1A', Value: state.bas.boxes['1A'] },
+        { Box: '1B', Value: state.bas.boxes['1B'] },
+      ];
+      const csv = createCSV(['Box', 'Value'], rows);
+      downloadBlob(new Blob([csv], { type: 'text/csv' }), `${filenameBase}.csv`);
+      return;
+    }
+    if (format === 'json') {
+      const json = JSON.stringify({ meta, data: state.bas }, null, 2);
+      downloadBlob(new Blob([json], { type: 'application/json' }), `${filenameBase}.json`);
+      return;
+    }
+    throw new Error(`Unsupported BAS export format: ${format}`);
+  };
+
+  const exportProfitLoss = (format) => {
+    if (!state.profitLoss || !state.profitLossMeta) {
+      throw new Error('Generate the profit and loss report first.');
+    }
+    const meta = state.profitLossMeta;
+    const normalise = (value) => {
+      if (!value) return 'na';
+      const stringValue = String(value);
+      return stringValue.includes('T') ? stringValue.split('T')[0] : stringValue;
+    };
+    const periodStart = normalise(meta.start || state.profitLoss?.period?.start);
+    const periodEnd = normalise(meta.end || state.profitLoss?.period?.end);
+    const filenameBase = `ProfitLoss-${periodStart}-${periodEnd}`;
+    if (format === 'csv') {
+      const incomeRows = state.profitLoss.income.map((item) => ({
+        Section: 'Income',
+        Account: item.account,
+        Amount: item.amount,
+      }));
+      const expenseRows = state.profitLoss.expenses.map((item) => ({
+        Section: 'Expenses',
+        Account: item.account,
+        Amount: item.amount,
+      }));
+      const totalRows = [
+        { Section: 'Totals', Account: 'Income', Amount: state.profitLoss.totals.income },
+        { Section: 'Totals', Account: 'Expenses', Amount: state.profitLoss.totals.expenses },
+        { Section: 'Totals', Account: 'Net profit', Amount: state.profitLoss.totals.net },
+      ];
+      const csv = createCSV(['Section', 'Account', 'Amount'], [...incomeRows, ...expenseRows, ...totalRows]);
+      downloadBlob(new Blob([csv], { type: 'text/csv' }), `${filenameBase}.csv`);
+      return;
+    }
+    if (format === 'pdf') {
+      const blob = createProfitLossPdf(state.profitLoss, state.profitLossMeta);
+      downloadBlob(blob, `${filenameBase}.pdf`);
+      return;
+    }
+    if (format === 'json') {
+      const json = JSON.stringify({ meta: state.profitLossMeta, data: state.profitLoss }, null, 2);
+      downloadBlob(new Blob([json], { type: 'application/json' }), `${filenameBase}.json`);
+      return;
+    }
+    throw new Error(`Unsupported profit and loss export format: ${format}`);
+  };
+
+  const exportCashflow = (format) => {
+    if (!state.cashflow || !state.cashflowMeta) {
+      throw new Error('Generate the cashflow report first.');
+    }
+    const filenameBase = `Cashflow-${state.cashflowMeta.start}-${state.cashflowMeta.end}`;
+    if (format === 'csv') {
+      const rows = state.cashflow.rows.map((row) => ({
+        Month: row.label,
+        CashIn: row.cashIn,
+        CashOut: row.cashOut,
+        Net: row.net,
+      }));
+      rows.push({ Month: 'Total', CashIn: state.cashflow.totals.cashIn, CashOut: state.cashflow.totals.cashOut, Net: state.cashflow.totals.net });
+      const csv = createCSV(['Month', 'CashIn', 'CashOut', 'Net'], rows);
+      downloadBlob(new Blob([csv], { type: 'text/csv' }), `${filenameBase}.csv`);
+      return;
+    }
+    if (format === 'json') {
+      const json = JSON.stringify({ meta: state.cashflowMeta, data: state.cashflow }, null, 2);
+      downloadBlob(new Blob([json], { type: 'application/json' }), `${filenameBase}.json`);
+      return;
+    }
+    throw new Error(`Unsupported cashflow export format: ${format}`);
+  };
+
+  const exportAging = (format) => {
+    if (!state.aging || !state.agingMeta) {
+      throw new Error('Generate the aging report first.');
+    }
+    const filenameBase = `Aging-${state.agingMeta.generatedAt}`;
+    if (format === 'csv') {
+      const rows = state.aging.details.map((item) => ({
+        Invoice: item.invoiceNumber,
+        Client: item.clientName,
+        DueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-AU') : '',
+        DaysPastDue: item.daysPastDue,
+        Outstanding: item.outstanding,
+      }));
+      const csv = createCSV(['Invoice', 'Client', 'DueDate', 'DaysPastDue', 'Outstanding'], rows);
+      downloadBlob(new Blob([csv], { type: 'text/csv' }), `${filenameBase}.csv`);
+      return;
+    }
+    if (format === 'json') {
+      const json = JSON.stringify(state.aging, null, 2);
+      downloadBlob(new Blob([json], { type: 'application/json' }), `${filenameBase}.json`);
+      return;
+    }
+    throw new Error(`Unsupported aging export format: ${format}`);
+  };
+
+
+  const exportPack = async (start, end) => {
+    const { startDate, endDate } = assertDateRange(start, end);
+    const [invoices, expenses, payments, attachments, clients] = await Promise.all([
+      getAll('invoices'),
+      getAll('expenses'),
+      getAll('payments'),
+      getAll('attachments'),
+      getAll('clients'),
+    ]);
+
+    const clientMap = mapById(clients);
+    const paymentsByInvoice = new Map();
+    payments.forEach((payment) => {
+      const list = paymentsByInvoice.get(payment.invoiceId) || [];
+      list.push(payment);
+      paymentsByInvoice.set(payment.invoiceId, list);
+    });
+
+    const invoicesInRange = invoices.filter((invoice) => {
+      const issueDate = parseISODate(invoice.issueDate);
+      return issueDate && issueDate >= startDate && issueDate <= endDate;
+    });
+
+    const expensesInRange = expenses.filter((expense) => {
+      const expenseDate = parseISODate(expense.date);
+      return expenseDate && expenseDate >= startDate && expenseDate <= endDate;
+    });
+
+    const invoiceRows = invoicesInRange.map((invoice) => {
+      const totals = calculateInvoiceTotals(invoice);
+      const invoicePayments = paymentsByInvoice.get(invoice.id) || [];
+      const paid = sum(invoicePayments.map((payment) => Number(payment.amount || 0)));
+      const outstanding = Number((totals.total - paid).toFixed(2));
+      const clientName = clientMap.get(invoice.clientId)?.name || 'Unknown client';
+      return {
+        Number: invoice.number,
+        Client: clientName,
+        IssueDate: invoice.issueDate,
+        DueDate: invoice.dueDate || '',
+        Status: invoice.status || 'draft',
+        Net: totals.net.toFixed(2),
+        GST: totals.gst.toFixed(2),
+        Total: totals.total.toFixed(2),
+        Paid: paid.toFixed(2),
+        Outstanding: outstanding.toFixed(2),
+      };
+    });
+
+    const expenseRows = expensesInRange.map((expense) => ({
+      Reference: expense.reference,
+      Vendor: expense.vendor || '',
+      Date: expense.date,
+      Category: expense.account || expense.category || '',
+      Amount: Number(expense.amount || 0).toFixed(2),
+      GST: Number(expense.gstAmount || 0).toFixed(2),
+      Notes: expense.description || '',
+    }));
+
+    const basAccrual = await generateBASReport(start, end, 'accrual');
+    const profitLoss = await generateProfitLoss(start, end);
+
+    const trialRows = [
+      { Account: 'Sales income', Debit: '', Credit: profitLoss.totals.income.toFixed(2) },
+      { Account: 'Expenses', Debit: profitLoss.totals.expenses.toFixed(2), Credit: '' },
+      { Account: 'GST collected', Debit: '', Credit: basAccrual.boxes['1A'].toFixed(2) },
+      { Account: 'GST credits', Debit: basAccrual.boxes['1B'].toFixed(2), Credit: '' },
+      {
+        Account: 'Net profit',
+        Debit: profitLoss.totals.net < 0 ? Math.abs(profitLoss.totals.net).toFixed(2) : '',
+        Credit: profitLoss.totals.net > 0 ? profitLoss.totals.net.toFixed(2) : '',
+      },
+    ];
+
+    const basRows = [
+      { Box: 'G1', Value: basAccrual.boxes.G1.toFixed(2) },
+      { Box: 'G2', Value: basAccrual.boxes.G2.toFixed(2) },
+      { Box: 'G3', Value: basAccrual.boxes.G3.toFixed(2) },
+      { Box: '1A', Value: basAccrual.boxes['1A'].toFixed(2) },
+      { Box: '1B', Value: basAccrual.boxes['1B'].toFixed(2) },
+      { Box: 'Net GST', Value: basAccrual.totals.netGST.toFixed(2) },
+    ];
+
+    const archive = new ZipArchive();
+    archive.addFile('reports/invoices.csv', createCSV(['Number', 'Client', 'IssueDate', 'DueDate', 'Status', 'Net', 'GST', 'Total', 'Paid', 'Outstanding'], invoiceRows));
+    archive.addFile('reports/expenses.csv', createCSV(['Reference', 'Vendor', 'Date', 'Category', 'Amount', 'GST', 'Notes'], expenseRows));
+    archive.addFile('reports/trial-balance.csv', createCSV(['Account', 'Debit', 'Credit'], trialRows));
+    archive.addFile('reports/bas-summary.csv', createCSV(['Box', 'Value'], basRows));
+
+    const metadata = {
+      generatedAt: new Date().toISOString(),
+      period: { start: startDate.toISOString(), end: endDate.toISOString() },
+      totals: {
+        invoices: invoiceRows.length,
+        expenses: expenseRows.length,
+        netGST: basAccrual.totals.netGST,
+        netProfit: profitLoss.totals.net,
+      },
+    };
+
+    archive.addFile('reports/metadata.json', JSON.stringify(metadata, null, 2));
+
+    attachments.forEach((attachment) => {
+      const isInvoiceAttachment = attachment.entityType === 'invoice';
+      const isExpenseAttachment = attachment.entityType === 'expense';
+      if (!isInvoiceAttachment && !isExpenseAttachment) return;
+
+      const includeInvoice = isInvoiceAttachment && invoicesInRange.some((invoice) => invoice.id === attachment.entityId);
+      const includeExpense = isExpenseAttachment && expensesInRange.some((expense) => expense.id === attachment.entityId);
+      if (!includeInvoice && !includeExpense) {
+        return;
+      }
+
+      const folder = isInvoiceAttachment ? 'invoices' : 'expenses';
+      const filename = attachment.filename || `${attachment.id}.bin`;
+      const pathName = `attachments/${folder}/${filename}`;
+      archive.addFile(pathName, base64ToUint8Array(attachment.data));
+    });
+
+    const blob = archive.generate();
+    const filename = `Zantra-export-${start}-${end}.zip`;
+    downloadBlob(blob, filename);
+    return { filename, invoices: invoiceRows.length, expenses: expenseRows.length };
+  };
+
+
+  const setFeedback = (form, message, tone = 'info') => {
+    const feedback = form.querySelector('[data-feedback]');
+    if (!feedback) return;
+    feedback.textContent = message || '';
+    feedback.dataset.tone = tone;
+  };
+
+  const formatInputDate = (input) => (input ? new Date(input).toISOString().slice(0, 10) : '');
+
+  const setupModals = () => {
+    const modalRoot = document.querySelector('[data-modal-root]');
+    if (!modalRoot) return;
+
+    let activeModal = null;
+
+    const openModal = (modalId) => {
+      const modal = modalRoot.querySelector(`#${modalId}`);
+      if (!modal || modal === activeModal) return;
+      modal.hidden = false;
+      modal.setAttribute('aria-hidden', 'false');
+      modal.setAttribute('tabindex', '-1');
+      modal.focus();
+      activeModal = modal;
+      document.body.classList.add('has-modal');
+    };
+
+    const closeModal = () => {
+      if (!activeModal) return;
+      activeModal.hidden = true;
+      activeModal.setAttribute('aria-hidden', 'true');
+      activeModal.removeAttribute('tabindex');
+      activeModal = null;
+      document.body.classList.remove('has-modal');
+    };
+
+    modalRoot.addEventListener('click', (event) => {
+      if (event.target.classList.contains('report-modal')) {
+        closeModal();
+      }
+    });
+
+    modalRoot.querySelectorAll('[data-modal-close]').forEach((button) => {
+      button.addEventListener('click', () => closeModal());
+    });
+
+    document.querySelectorAll('[data-modal-trigger]').forEach((trigger) => {
+      trigger.addEventListener('click', () => {
+        const target = trigger.getAttribute('data-modal-trigger');
+        if (target) {
+          openModal(target);
+        }
+      });
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    });
+  };
+
+  const handleBASForm = () => {
+    const form = document.querySelector('[data-bas-form]');
+    if (!form) return;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setFeedback(form, 'Generating BAS preview…', 'info');
+      const start = form.start.value;
+      const end = form.end.value;
+      const basis = form.basis.value || 'cash';
+
+      try {
+        const bas = await generateBASReport(start, end, basis);
+        state.bas = bas;
+        state.basMeta = { start, end, basis };
+        renderBASPreview(bas, state.basMeta);
+        setFeedback(form, 'Preview updated. You can export the BAS draft.', 'success');
+      } catch (error) {
+        console.error(error);
+        setFeedback(form, error.message || 'Unable to generate BAS report.', 'error');
+      }
+    });
+
+    document.querySelectorAll('[data-export-bas]').forEach((button) => {
+      button.addEventListener('click', () => {
+        try {
+          exportBAS(button.getAttribute('data-export-bas'));
+        } catch (error) {
+          setFeedback(form, error.message, 'error');
+        }
+      });
+    });
+  };
+
+  const handleExportPackForm = () => {
+    const form = document.querySelector('[data-export-pack-form]');
+    const statusContainer = document.querySelector('[data-export-pack-status]');
+    if (!form || !statusContainer) return;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const start = form.start.value;
+      const end = form.end.value;
+      setFeedback(form, 'Packaging export data…', 'info');
+      statusContainer.textContent = '';
+      try {
+        const result = await exportPack(start, end);
+        setFeedback(form, 'Export pack downloaded.', 'success');
+        statusContainer.textContent = `Created ${result.filename} with ${result.invoices} invoices and ${result.expenses} expenses.`;
+      } catch (error) {
+        console.error(error);
+        setFeedback(form, error.message || 'Export failed.', 'error');
+        statusContainer.textContent = '';
+      }
+    });
+  };
+
+  const handleProfitLossForm = () => {
+    const form = document.querySelector('[data-profit-loss-form]');
+    if (!form) return;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const start = form.start.value;
+      const end = form.end.value;
+      setFeedback(form, 'Building profit & loss…', 'info');
+      try {
+        const report = await generateProfitLoss(start, end);
+        state.profitLoss = report;
+        state.profitLossMeta = { start, end };
+        renderProfitLossPreview(report);
+        setFeedback(form, 'Profit & loss ready.', 'success');
+      } catch (error) {
+        console.error(error);
+        setFeedback(form, error.message || 'Unable to generate profit & loss.', 'error');
+      }
+    });
+
+    document.querySelectorAll('[data-export-profit-loss]').forEach((button) => {
+      button.addEventListener('click', () => {
+        try {
+          exportProfitLoss(button.getAttribute('data-export-profit-loss'));
+        } catch (error) {
+          setFeedback(form, error.message, 'error');
+        }
+      });
+    });
+  };
+
+  const handleCashflowForm = () => {
+    const form = document.querySelector('[data-cashflow-form]');
+    if (!form) return;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const start = form.start.value;
+      const end = form.end.value;
+      setFeedback(form, 'Calculating cashflow…', 'info');
+      try {
+        const report = await generateCashflow(start, end);
+        state.cashflow = report;
+        state.cashflowMeta = { start, end };
+        renderCashflowPreview(report);
+        setFeedback(form, 'Cashflow report ready.', 'success');
+      } catch (error) {
+        console.error(error);
+        setFeedback(form, error.message || 'Unable to generate cashflow report.', 'error');
+      }
+    });
+
+    document.querySelectorAll('[data-export-cashflow]').forEach((button) => {
+      button.addEventListener('click', () => {
+        try {
+          exportCashflow(button.getAttribute('data-export-cashflow'));
+        } catch (error) {
+          setFeedback(form, error.message, 'error');
+        }
+      });
+    });
+  };
+
+  const handleAgingReport = () => {
+    const trigger = document.querySelector('[data-generate-aging]');
+    const container = document.querySelector('[data-aging-preview]');
+    if (!trigger || !container) return;
+
+    trigger.addEventListener('click', async () => {
+      const modal = trigger.closest('.report-modal__card');
+      setFeedback(modal || document, 'Generating aging report…', 'info');
+      try {
+        const report = await generateAgingReport();
+        state.aging = report;
+        state.agingMeta = { generatedAt: report.generatedAt };
+        renderAgingPreview(report);
+        setFeedback(modal || document, 'Aging schedule updated.', 'success');
+      } catch (error) {
+        console.error(error);
+        setFeedback(modal || document, error.message || 'Unable to build aging schedule.', 'error');
+      }
+    });
+
+    document.querySelectorAll('[data-export-aging]').forEach((button) => {
+      button.addEventListener('click', () => {
+        try {
+          exportAging(button.getAttribute('data-export-aging'));
+        } catch (error) {
+          const modal = button.closest('.report-modal__card');
+          setFeedback(modal || document, error.message, 'error');
+        }
+      });
+    });
+  };
+
+  const initializeReporting = async () => {
+    await getDatabase();
+    setupModals();
+    handleBASForm();
+    handleExportPackForm();
+    handleProfitLossForm();
+    handleCashflowForm();
+    handleAgingReport();
+    await renderGSTTrendChart();
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initializeReporting().catch((error) => console.error('Failed to initialise reporting', error));
+  });
+
+  Object.assign(window, {
+    generateBASReport,
+    exportPack,
+    generateProfitLoss,
+    generateCashflow,
+    generateAgingReport,
+  });
+})();
+
+    </script>
   </body>
 </html>
