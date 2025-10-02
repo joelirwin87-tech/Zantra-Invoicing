@@ -512,7 +512,7 @@ class ZantraApp {
 
     if (this.dashboardOutstandingList) {
       clearChildren(this.dashboardOutstandingList);
-      const outstanding = this.state.invoices.filter((invoice) => invoice.status !== 'paid');
+      const outstanding = this.state.invoices.filter((invoice) => (invoice.balanceDue ?? invoice.total) > 0);
       if (!outstanding.length) {
         const empty = document.createElement('li');
         empty.textContent = 'All invoices are paid.';
@@ -520,9 +520,10 @@ class ZantraApp {
       } else {
         outstanding.slice(0, 5).forEach((invoice) => {
           const item = document.createElement('li');
+          const balance = invoice.balanceDue ?? invoice.total;
           item.innerHTML = `<strong>${invoice.number}</strong> · ${invoice.clientName} · Due ${formatDate(
             invoice.dueDate
-          )} · ${formatCurrency(invoice.total)}`;
+          )} · ${formatCurrency(balance)}`;
           this.dashboardOutstandingList.appendChild(item);
         });
       }
@@ -754,27 +755,36 @@ class ZantraApp {
         .sort((a, b) => Date.parse(b.issueDate) - Date.parse(a.issueDate))
         .forEach((invoice) => {
           const row = document.createElement('tr');
-          const statusMarkup =
-            invoice.status === 'paid'
-              ? `<span class="status-pill status-pill--success">Paid</span>`
-              : `<span class="status-pill status-pill--warning">Unpaid</span>`;
+          let statusMarkup = `<span class="status-pill status-pill--warning">Unpaid</span>`;
+          if (invoice.status === 'paid') {
+            statusMarkup = `<span class="status-pill status-pill--success">Paid</span>`;
+          } else if (invoice.status === 'partial') {
+            statusMarkup = `<span class="status-pill status-pill--info">Partial</span>`;
+          }
+          const balanceMeta =
+            invoice.status !== 'paid' && (invoice.balanceDue ?? invoice.total) > 0
+              ? `<div class="status-meta">Balance ${formatCurrency(invoice.balanceDue ?? invoice.total)}</div>`
+              : '';
           const actions = [
             `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${invoice.id}">Edit</button>`,
-            invoice.status !== 'paid'
+            (invoice.balanceDue ?? invoice.total) > 0
               ? `<button class="btn btn--sm btn--primary" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
               : '',
             `<button class="btn btn--sm btn--destructive" data-action="delete" data-id="${invoice.id}">Delete</button>`
           ]
             .filter(Boolean)
             .join('');
-          const paidMeta = invoice.status === 'paid' && invoice.paidAt ? `<div class="status-meta">Paid ${formatDate(invoice.paidAt)}</div>` : '';
+          const paidMeta =
+            invoice.status === 'paid' && invoice.paidAt
+              ? `<div class="status-meta">Paid ${formatDate(invoice.paidAt)}</div>`
+              : '';
           row.innerHTML = `
             <td>${invoice.number}</td>
             <td>${invoice.clientName}</td>
             <td>${formatDate(invoice.issueDate)}</td>
             <td>${formatDate(invoice.dueDate)}</td>
             <td>${formatCurrency(invoice.total)}</td>
-            <td>${statusMarkup}${paidMeta}</td>
+            <td>${statusMarkup}${paidMeta}${balanceMeta}</td>
             <td class="text-right">
               <div class="table-actions">${actions}</div>
             </td>
@@ -791,7 +801,11 @@ class ZantraApp {
             if (!invoice) {
               return;
             }
-            PaymentManager.recordPayment(invoiceId, invoice.total, new Date());
+            const amountDue = invoice.balanceDue ?? invoice.total;
+            if (amountDue <= 0) {
+              return;
+            }
+            PaymentManager.recordPayment(invoiceId, amountDue, new Date());
             this.refreshData();
             this.renderAll();
           } catch (error) {
@@ -1410,7 +1424,7 @@ class ZantraApp {
           <td>${invoice.number}</td>
           <td>${invoice.clientName}</td>
           <td>${formatDate(invoice.dueDate)}</td>
-          <td>${formatCurrency(invoice.total)}</td>
+          <td>${formatCurrency(invoice.balanceDue ?? invoice.total)}</td>
           <td><button class="btn btn--sm btn--primary" data-action="record-payment" data-id="${invoice.id}">Record payment</button></td>
         `;
         this.paymentOutstandingBody.appendChild(row);
@@ -1424,7 +1438,11 @@ class ZantraApp {
           if (!invoice) {
             return;
           }
-          PaymentManager.recordPayment(invoiceId, invoice.total, new Date());
+          const amountDue = invoice.balanceDue ?? invoice.total;
+          if (amountDue <= 0) {
+            return;
+          }
+          PaymentManager.recordPayment(invoiceId, amountDue, new Date());
           this.refreshData();
           this.renderAll();
         });

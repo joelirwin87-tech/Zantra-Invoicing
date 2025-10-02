@@ -37,9 +37,33 @@ const calculateDueDate = (issueDateIso, fallbackDays = 14) => {
 
 const withTwoDecimals = (value) => Math.round(value * 100) / 100;
 
+const resolveClient = (clientId, fallback, { strictClientValidation }) => {
+  const id = sanitizeString(clientId);
+  if (!id) {
+    throw new Error('InvoiceManager: clientId is required.');
+  }
+
+  const client = ClientManager.findById(id);
+  if (client) {
+    return client;
+  }
+
+  if (strictClientValidation) {
+    throw new Error('InvoiceManager: clientId is required.');
+  }
+
+  return {
+    id,
+    name: sanitizeString(fallback?.clientName) || 'Unknown client',
+    businessName: sanitizeString(fallback?.clientBusinessName) || ''
+  };
+};
+
 export class InvoiceManager {
   static list() {
-    return DataManager.listInvoices().map((invoice) => InvoiceManager.#normalize(invoice));
+    return DataManager.listInvoices().map((invoice) =>
+      InvoiceManager.#normalize(invoice, { strictClientValidation: false })
+    );
   }
 
   static findById(invoiceId) {
@@ -52,12 +76,15 @@ export class InvoiceManager {
 
   static create(input) {
     const now = DataManager.now();
-    const normalized = InvoiceManager.#normalize({
-      ...input,
-      id: DataManager.randomUUID(),
-      createdAt: now,
-      updatedAt: now
-    });
+    const normalized = InvoiceManager.#normalize(
+      {
+        ...input,
+        id: DataManager.randomUUID(),
+        createdAt: now,
+        updatedAt: now
+      },
+      { strictClientValidation: true }
+    );
     return DataManager.saveInvoice(normalized);
   }
 
@@ -66,13 +93,23 @@ export class InvoiceManager {
     if (!existing) {
       throw new Error(`InvoiceManager.update: No invoice found for id "${invoiceId}".`);
     }
-    const normalized = InvoiceManager.#normalize({
-      ...existing,
-      ...updates,
-      id: existing.id,
-      createdAt: existing.createdAt,
-      updatedAt: DataManager.now()
-    });
+    const sanitizedClientId = sanitizeString(updates?.clientId);
+    if (sanitizedClientId && sanitizedClientId !== existing.clientId) {
+      const nextClient = ClientManager.findById(sanitizedClientId);
+      if (!nextClient) {
+        throw new Error(`InvoiceManager.update: No client found for id "${sanitizedClientId}".`);
+      }
+    }
+    const normalized = InvoiceManager.#normalize(
+      {
+        ...existing,
+        ...updates,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: DataManager.now()
+      },
+      { strictClientValidation: false }
+    );
     return DataManager.saveInvoice(normalized);
   }
 
@@ -83,7 +120,9 @@ export class InvoiceManager {
     }
     return InvoiceManager.update(invoiceId, {
       status: 'paid',
-      paidAt: coerceDate(paidDate, DataManager.now())
+      paidAt: coerceDate(paidDate, DataManager.now()),
+      amountPaid: existing.total,
+      balanceDue: 0
     });
   }
 
@@ -92,7 +131,9 @@ export class InvoiceManager {
   }
 
   static getOutstandingInvoices() {
-    return InvoiceManager.list().filter((invoice) => invoice.status !== 'paid');
+    return InvoiceManager.list().filter((invoice) =>
+      (invoice.balanceDue ?? invoice.total) > 0
+    );
   }
 
   static generateInvoiceNumber(client) {
@@ -120,21 +161,19 @@ export class InvoiceManager {
     );
   }
 
-  static #normalize(input) {
+  static #normalize(input, options = {}) {
     if (!input || typeof input !== 'object') {
       throw new Error('InvoiceManager: invoice payload must be an object.');
     }
 
-    const client = ClientManager.findById(input.clientId);
-    if (!client) {
-      throw new Error('InvoiceManager: clientId is required.');
-    }
+    const { strictClientValidation = true } = options;
+
+    const client = resolveClient(input.clientId, input, { strictClientValidation });
 
     const settings = DataManager.getSettings();
     const issueDate = coerceDate(input.issueDate, DataManager.now());
     const dueDate = coerceDate(input.dueDate, calculateDueDate(issueDate));
-    const paidAt = sanitizeString(input.paidAt);
-    const status = sanitizeString(input.status) || (paidAt ? 'paid' : 'unpaid');
+    let paidAt = sanitizeString(input.paidAt);
 
     const lineItems = InvoiceManager.#normalizeLineItems(input.lineItems, settings.gstRate);
     if (!lineItems.length) {
@@ -142,6 +181,25 @@ export class InvoiceManager {
     }
 
     const totals = InvoiceManager.calculateTotals(lineItems, settings.gstRate);
+
+    const requestedStatus = sanitizeString(input.status).toLowerCase();
+    const rawAmountPaid = sanitizeNumber(
+      input.amountPaid ?? (requestedStatus === 'paid' ? totals.total : 0)
+    );
+    const amountPaid = withTwoDecimals(Math.min(totals.total, rawAmountPaid));
+    const balanceDue = withTwoDecimals(Math.max(0, totals.total - amountPaid));
+
+    let status;
+    if (balanceDue === 0) {
+      status = 'paid';
+      paidAt = paidAt || DataManager.now();
+    } else if (amountPaid > 0) {
+      status = 'partial';
+      paidAt = '';
+    } else {
+      status = 'unpaid';
+      paidAt = '';
+    }
 
     return {
       id: sanitizeString(input.id) || DataManager.randomUUID(),
@@ -151,13 +209,15 @@ export class InvoiceManager {
       clientBusinessName: client.businessName,
       issueDate,
       dueDate,
-      paidAt: paidAt || '',
-      status: status === 'paid' ? 'paid' : paidAt ? 'paid' : 'unpaid',
+      paidAt,
+      status,
       notes: sanitizeString(input.notes),
       lineItems,
       subtotal: totals.subtotal,
       gstTotal: totals.gstTotal,
       total: totals.total,
+      amountPaid,
+      balanceDue,
       createdAt: sanitizeString(input.createdAt) || DataManager.now(),
       updatedAt: sanitizeString(input.updatedAt) || DataManager.now()
     };

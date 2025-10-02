@@ -32,12 +32,16 @@ export class ReportManager {
   static getDashboardMetrics() {
     const invoices = InvoiceManager.list();
     const quotes = QuoteManager.list();
-    const outstandingInvoices = invoices.filter((invoice) => invoice.status !== 'paid');
+    const outstandingInvoices = invoices.filter(
+      (invoice) => (invoice.balanceDue ?? invoice.total) > 0
+    );
     const activeQuotes = quotes.filter((quote) => quote.status !== 'declined');
     const payments = PaymentManager.list();
 
     const openJobs = outstandingInvoices.length + activeQuotes.length;
-    const invoicesDueAmount = withTwoDecimals(outstandingInvoices.reduce((sum, invoice) => sum + invoice.total, 0));
+    const invoicesDueAmount = withTwoDecimals(
+      outstandingInvoices.reduce((sum, invoice) => sum + (invoice.balanceDue ?? invoice.total), 0)
+    );
     const quoteApprovalRate = ReportManager.getQuoteApprovalRate();
     const averagePaymentTime = PaymentManager.getAveragePaymentDays();
 
@@ -104,11 +108,17 @@ export class ReportManager {
   static getGstSummary() {
     const invoices = InvoiceManager.list();
     const paidInvoices = invoices.filter((invoice) => invoice.status === 'paid');
-    const outstandingInvoices = invoices.filter((invoice) => invoice.status !== 'paid');
+    const outstandingInvoices = invoices.filter((invoice) => (invoice.balanceDue ?? invoice.total) > 0);
 
     const paidGst = withTwoDecimals(paidInvoices.reduce((total, invoice) => total + invoice.gstTotal, 0));
     const outstandingGst = withTwoDecimals(
-      outstandingInvoices.reduce((total, invoice) => total + invoice.gstTotal, 0)
+      outstandingInvoices.reduce((total, invoice) => {
+        if (!invoice.total) {
+          return total;
+        }
+        const ratio = Math.min(1, Math.max(0, (invoice.balanceDue ?? invoice.total) / invoice.total));
+        return total + invoice.gstTotal * ratio;
+      }, 0)
     );
     return {
       paidGst,
