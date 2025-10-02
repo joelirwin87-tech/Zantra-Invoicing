@@ -26,6 +26,8 @@ const coerceDate = (value, fallback) => {
   return new Date(timestamp).toISOString();
 };
 
+const withTwoDecimals = (value) => Math.round(value * 100) / 100;
+
 export class PaymentManager {
   static list() {
     return DataManager.listPayments();
@@ -46,7 +48,24 @@ export class PaymentManager {
     }
 
     const dateIso = coerceDate(paymentDate, DataManager.now());
-    const normalizedAmount = sanitizeNumber(amount || invoice.total);
+    const normalizedAmount = sanitizeNumber(amount);
+    if (normalizedAmount <= 0) {
+      throw new Error('PaymentManager.recordPayment: amount must be greater than zero.');
+    }
+
+    const previousPayments = PaymentManager.listByInvoice(invoice.id);
+    const alreadyPaid = withTwoDecimals(
+      previousPayments.reduce((sum, payment) => sum + sanitizeNumber(payment.amount), 0)
+    );
+    const remainingBalance = withTwoDecimals(Math.max(0, invoice.total - alreadyPaid));
+    if (normalizedAmount > remainingBalance) {
+      throw new Error('PaymentManager.recordPayment: amount exceeds outstanding balance.');
+    }
+
+    const totalPaid = withTwoDecimals(alreadyPaid + normalizedAmount);
+    const balanceDue = withTwoDecimals(Math.max(0, invoice.total - totalPaid));
+    const status = balanceDue === 0 ? 'paid' : 'partial';
+    const paidAt = status === 'paid' ? dateIso : '';
     const payment = {
       id: DataManager.randomUUID(),
       invoiceId: invoice.id,
@@ -60,7 +79,12 @@ export class PaymentManager {
     };
 
     DataManager.savePayment(payment);
-    InvoiceManager.markPaid(invoice.id, dateIso);
+    InvoiceManager.update(invoice.id, {
+      status,
+      paidAt,
+      amountPaid: totalPaid,
+      balanceDue
+    });
     return payment;
   }
 
@@ -73,7 +97,10 @@ export class PaymentManager {
   }
 
   static getOutstandingBalance() {
-    return PaymentManager.getOutstandingInvoices().reduce((total, invoice) => total + invoice.total, 0);
+    return PaymentManager.getOutstandingInvoices().reduce(
+      (total, invoice) => total + (invoice.balanceDue ?? invoice.total),
+      0
+    );
   }
 
   static getAveragePaymentDays() {

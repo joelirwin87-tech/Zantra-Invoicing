@@ -28,9 +28,33 @@ const coerceDate = (value, fallback) => {
 
 const withTwoDecimals = (value) => Math.round(value * 100) / 100;
 
+const resolveClient = (clientId, fallback, { strictClientValidation }) => {
+  const id = sanitizeString(clientId);
+  if (!id) {
+    throw new Error('QuoteManager: clientId is required.');
+  }
+
+  const client = ClientManager.findById(id);
+  if (client) {
+    return client;
+  }
+
+  if (strictClientValidation) {
+    throw new Error('QuoteManager: clientId is required.');
+  }
+
+  return {
+    id,
+    name: sanitizeString(fallback?.clientName) || 'Unknown client',
+    businessName: sanitizeString(fallback?.clientBusinessName) || ''
+  };
+};
+
 export class QuoteManager {
   static list() {
-    return DataManager.listQuotes().map((quote) => QuoteManager.#normalize(quote));
+    return DataManager.listQuotes().map((quote) =>
+      QuoteManager.#normalize(quote, { strictClientValidation: false })
+    );
   }
 
   static findById(quoteId) {
@@ -43,12 +67,15 @@ export class QuoteManager {
 
   static create(input) {
     const now = DataManager.now();
-    const normalized = QuoteManager.#normalize({
-      ...input,
-      id: DataManager.randomUUID(),
-      createdAt: now,
-      updatedAt: now
-    });
+    const normalized = QuoteManager.#normalize(
+      {
+        ...input,
+        id: DataManager.randomUUID(),
+        createdAt: now,
+        updatedAt: now
+      },
+      { strictClientValidation: true }
+    );
     return DataManager.saveQuote(normalized);
   }
 
@@ -57,13 +84,23 @@ export class QuoteManager {
     if (!existing) {
       throw new Error(`QuoteManager.update: No quote found for id "${quoteId}".`);
     }
-    const normalized = QuoteManager.#normalize({
-      ...existing,
-      ...updates,
-      id: existing.id,
-      createdAt: existing.createdAt,
-      updatedAt: DataManager.now()
-    });
+    const sanitizedClientId = sanitizeString(updates?.clientId);
+    if (sanitizedClientId && sanitizedClientId !== existing.clientId) {
+      const nextClient = ClientManager.findById(sanitizedClientId);
+      if (!nextClient) {
+        throw new Error(`QuoteManager.update: No client found for id "${sanitizedClientId}".`);
+      }
+    }
+    const normalized = QuoteManager.#normalize(
+      {
+        ...existing,
+        ...updates,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: DataManager.now()
+      },
+      { strictClientValidation: false }
+    );
     return DataManager.saveQuote(normalized);
   }
 
@@ -110,15 +147,14 @@ export class QuoteManager {
     );
   }
 
-  static #normalize(input) {
+  static #normalize(input, options = {}) {
     if (!input || typeof input !== 'object') {
       throw new Error('QuoteManager: quote payload must be an object.');
     }
 
-    const client = ClientManager.findById(input.clientId);
-    if (!client) {
-      throw new Error('QuoteManager: clientId is required.');
-    }
+    const { strictClientValidation = true } = options;
+
+    const client = resolveClient(input.clientId, input, { strictClientValidation });
 
     const settings = DataManager.getSettings();
     const issueDate = coerceDate(input.issueDate, DataManager.now());
