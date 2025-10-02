@@ -948,6 +948,7 @@
               <button type="button" class="btn-ghost" data-export-bas="json">Export JSON</button>
             </div>
           </footer>
+
         </div>
       </div>
 
@@ -1014,7 +1015,6 @@
               <button type="submit" class="btn-solid">Generate report</button>
               <div class="export-actions" data-profit-loss-exports hidden>
                 <button type="button" class="btn-ghost" data-export-profit-loss="csv">Export CSV</button>
-                <button type="button" class="btn-ghost" data-export-profit-loss="pdf">Export PDF</button>
                 <button type="button" class="btn-ghost" data-export-profit-loss="json">Export JSON</button>
               </div>
               <p class="form-feedback" data-feedback></p>
@@ -1163,7 +1163,6 @@
     profitLossMeta: null,
     cashflow: null,
     cashflowMeta: null,
-    cashflowChart: null,
     aging: null,
     agingMeta: null,
   };
@@ -2412,147 +2411,41 @@ endobj
 
     container.innerHTML = '';
 
-    if (state.cashflowChart) {
-      state.cashflowChart.destroy();
-      state.cashflowChart = null;
-    }
+    const table = document.createElement('table');
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th scope="col">Month</th>
+          <th scope="col" class="text-right">Cash in</th>
+          <th scope="col" class="text-right">Cash out</th>
+          <th scope="col" class="text-right">Net</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.rows
+          .map(
+            (row) => `
+              <tr>
+                <th scope="row">${row.label}</th>
+                <td class="text-right">${toCurrency(row.cashIn)}</td>
+                <td class="text-right">${toCurrency(row.cashOut)}</td>
+                <td class="text-right">${toCurrency(row.net)}</td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th scope="row">Total</th>
+          <td class="text-right">${toCurrency(data.totals.cashIn)}</td>
+          <td class="text-right">${toCurrency(data.totals.cashOut)}</td>
+          <td class="text-right">${toCurrency(data.totals.net)}</td>
+        </tr>
+      </tfoot>
+    `;
 
-    if (!data.rows.length) {
-      const empty = document.createElement('div');
-      empty.className = 'empty-state';
-      empty.textContent = 'No cashflow activity for the selected period.';
-      container.append(empty);
-    } else {
-      const chartFrame = document.createElement('div');
-      chartFrame.className = 'chart-frame';
-      const canvas = document.createElement('canvas');
-      chartFrame.append(canvas);
-      container.append(chartFrame);
-
-      if (window.Chart) {
-        const labels = data.rows.map((row) => row.label);
-        const cashIn = data.rows.map((row) => Number(row.cashIn || 0));
-        const cashOut = data.rows.map((row) => Number(row.cashOut || 0));
-        const net = data.rows.map((row) => Number(row.net || 0));
-
-        state.cashflowChart = new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels,
-            datasets: [
-              {
-                type: 'bar',
-                label: 'Cash in',
-                data: cashIn,
-                backgroundColor: 'rgba(0, 198, 215, 0.6)',
-                borderColor: 'rgba(0, 198, 215, 0.9)',
-                borderRadius: 6,
-                maxBarThickness: 36,
-              },
-              {
-                type: 'bar',
-                label: 'Cash out',
-                data: cashOut,
-                backgroundColor: 'rgba(255, 111, 60, 0.6)',
-                borderColor: 'rgba(255, 111, 60, 0.9)',
-                borderRadius: 6,
-                maxBarThickness: 36,
-              },
-              {
-                type: 'line',
-                label: 'Net cash',
-                data: net,
-                borderColor: 'rgba(246, 247, 251, 1)',
-                backgroundColor: 'rgba(246, 247, 251, 0.2)',
-                borderWidth: 2,
-                tension: 0.3,
-                fill: false,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: {
-                ticks: {
-                  color: 'rgba(246, 247, 251, 0.85)',
-                },
-                grid: {
-                  display: false,
-                },
-              },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  color: 'rgba(246, 247, 251, 0.85)',
-                  callback: (value) => toCurrency(value),
-                },
-                grid: {
-                  color: 'rgba(246, 247, 251, 0.12)',
-                },
-              },
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  color: 'rgba(246, 247, 251, 0.85)',
-                },
-              },
-              tooltip: {
-                callbacks: {
-                  label: (context) => {
-                    const rawValue = context.parsed.y ?? context.parsed;
-                    return `${context.dataset.label}: ${toCurrency(rawValue)}`;
-                  },
-                },
-              },
-            },
-          },
-        });
-      } else {
-        const fallback = document.createElement('div');
-        fallback.className = 'empty-state';
-        fallback.textContent = 'Chart preview unavailable (Chart.js failed to load).';
-        chartFrame.replaceChildren(fallback);
-      }
-
-      const table = document.createElement('table');
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th scope="col">Month</th>
-            <th scope="col" class="text-right">Cash in</th>
-            <th scope="col" class="text-right">Cash out</th>
-            <th scope="col" class="text-right">Net</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${data.rows
-            .map(
-              (row) => `
-                <tr>
-                  <th scope="row">${row.label}</th>
-                  <td class="text-right">${toCurrency(row.cashIn)}</td>
-                  <td class="text-right">${toCurrency(row.cashOut)}</td>
-                  <td class="text-right">${toCurrency(row.net)}</td>
-                </tr>
-              `,
-            )
-            .join('')}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th scope="row">Total</th>
-            <td class="text-right">${toCurrency(data.totals.cashIn)}</td>
-            <td class="text-right">${toCurrency(data.totals.cashOut)}</td>
-            <td class="text-right">${toCurrency(data.totals.net)}</td>
-          </tr>
-        </tfoot>
-      `;
-
-      container.append(table);
-    }
+    container.append(table);
     if (exportContainer) {
       exportContainer.hidden = false;
     }
@@ -2753,54 +2646,6 @@ endobj
     return pdf.toBlob();
   };
 
-  const createProfitLossPdf = (data, meta) => {
-    const pdf = new SimplePDF();
-    let y = 790;
-    pdf.text('Profit & Loss Statement', 64, y, { size: 18 });
-    y -= 28;
-
-    const periodStart = meta?.start || data?.period?.start;
-    const periodEnd = meta?.end || data?.period?.end;
-    const periodLabel =
-      periodStart && periodEnd
-        ? `${new Date(periodStart).toLocaleDateString('en-AU')} to ${new Date(periodEnd).toLocaleDateString('en-AU')}`
-        : 'Not specified';
-    pdf.text(`Period: ${periodLabel}`, 64, y, { size: 12 });
-    y -= 18;
-    pdf.text(`Generated: ${new Date().toLocaleString('en-AU')}`, 64, y, { size: 12 });
-    y -= 24;
-
-    const writeSection = (title, rows) => {
-      pdf.text(title, 64, y, { size: 14 });
-      y -= 18;
-      if (!rows.length) {
-        pdf.text('No activity recorded.', 64, y, { size: 12 });
-        y -= 16;
-        return;
-      }
-      rows.forEach((row) => {
-        pdf.text(row.account, 64, y, { size: 12 });
-        pdf.text(toCurrency(row.amount), 360, y, { size: 12 });
-        y -= 16;
-      });
-      y -= 12;
-    };
-
-    writeSection('Income', data.income);
-    writeSection('Expenses', data.expenses);
-
-    pdf.text(`Total income: ${toCurrency(data.totals.income)}`, 64, y, { size: 12 });
-    y -= 16;
-    pdf.text(`Total expenses: ${toCurrency(data.totals.expenses)}`, 64, y, { size: 12 });
-    y -= 16;
-    pdf.text(`Net profit: ${toCurrency(data.totals.net)}`, 64, y, { size: 12 });
-    y -= 16;
-
-    pdf.text('Generated by Zantra Invoicing Reports', 64, y, { size: 10 });
-
-    return pdf.toBlob();
-  };
-
   const exportBAS = (format) => {
     if (!state.bas || !state.basMeta) {
       throw new Error('Generate a BAS report first.');
@@ -2836,15 +2681,7 @@ endobj
     if (!state.profitLoss || !state.profitLossMeta) {
       throw new Error('Generate the profit and loss report first.');
     }
-    const meta = state.profitLossMeta;
-    const normalise = (value) => {
-      if (!value) return 'na';
-      const stringValue = String(value);
-      return stringValue.includes('T') ? stringValue.split('T')[0] : stringValue;
-    };
-    const periodStart = normalise(meta.start || state.profitLoss?.period?.start);
-    const periodEnd = normalise(meta.end || state.profitLoss?.period?.end);
-    const filenameBase = `ProfitLoss-${periodStart}-${periodEnd}`;
+    const filenameBase = `ProfitLoss-${state.profitLossMeta.start}-${state.profitLossMeta.end}`;
     if (format === 'csv') {
       const incomeRows = state.profitLoss.income.map((item) => ({
         Section: 'Income',
@@ -2863,11 +2700,6 @@ endobj
       ];
       const csv = createCSV(['Section', 'Account', 'Amount'], [...incomeRows, ...expenseRows, ...totalRows]);
       downloadBlob(new Blob([csv], { type: 'text/csv' }), `${filenameBase}.csv`);
-      return;
-    }
-    if (format === 'pdf') {
-      const blob = createProfitLossPdf(state.profitLoss, state.profitLossMeta);
-      downloadBlob(blob, `${filenameBase}.pdf`);
       return;
     }
     if (format === 'json') {
