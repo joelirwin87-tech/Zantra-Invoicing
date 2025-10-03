@@ -181,20 +181,20 @@
               </article>
               <article class="card card--metric">
                 <header class="card__header">
-                  <h2 class="card__title">Upcoming Appointments</h2>
+                  <h2 class="card__title">Recurring Invoices Due Soon</h2>
                 </header>
                 <div class="card__body">
-                  <p class="metric__value" data-dashboard-value="upcomingAppointments">0</p>
-                  <p class="metric__meta">Scheduled site visits for the next 7 days.</p>
+                  <p class="metric__value" data-dashboard-value="upcomingRecurring">0 invoices</p>
+                  <p class="metric__meta">Scheduled renewals within the next 30 days.</p>
                 </div>
               </article>
               <article class="card card--metric">
                 <header class="card__header">
-                  <h2 class="card__title">Material Reorders</h2>
+                  <h2 class="card__title">Overdue Invoices</h2>
                 </header>
                 <div class="card__body">
-                  <p class="metric__value" data-dashboard-value="materialReorders">0</p>
-                  <p class="metric__meta">Jobs awaiting material replenishment.</p>
+                  <p class="metric__value" data-dashboard-value="overdueInvoices">0 invoices</p>
+                  <p class="metric__meta">Past-due balances awaiting payment.</p>
                 </div>
               </article>
             </div>
@@ -340,7 +340,7 @@
                           <th scope="col">Due</th>
                           <th scope="col" class="text-right">Total</th>
                           <th scope="col">Status</th>
-                          <th scope="col" class="text-right">Actions</th>
+                          <th scope="col" class="text-right">Actions (print, email, edit)</th>
                         </tr>
                       </thead>
                       <tbody></tbody>
@@ -927,6 +927,20 @@
                 <button class="btn btn--primary btn--lg save-settings-btn" type="submit">Save settings</button>
               </div>
             </form>
+            <section class="card settings-backup-card" aria-labelledby="settings-backup-title">
+              <header class="card__header">
+                <h2 id="settings-backup-title" class="card__title">Backup &amp; restore</h2>
+                <p class="card__subtitle">Download a full JSON backup or restore your invoicing data.</p>
+              </header>
+              <div class="card__body">
+                <div class="settings-backup-card__actions">
+                  <button type="button" class="btn btn--secondary btn--md" data-action="export-backup">Export backup</button>
+                  <button type="button" class="btn btn--ghost btn--md" data-action="restore-backup">Restore backup</button>
+                  <input type="file" accept="application/json" data-backup-input hidden />
+                </div>
+                <p class="settings-backup-card__status" role="status" aria-live="polite" data-backup-feedback></p>
+              </div>
+            </section>
           </section>
     </div>
   </main>

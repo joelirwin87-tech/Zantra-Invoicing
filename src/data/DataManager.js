@@ -9,6 +9,8 @@ const COLLECTION_KEYS = {
   settings: 'settings'
 };
 
+const BACKUP_SCHEMA_VERSION = 1;
+
 const DEFAULT_SETTINGS = {
   businessName: '',
   abn: '',
@@ -52,6 +54,7 @@ const normalizeNumber = (value) => {
 
 export class DataManager {
   static STORAGE_KEYS = { ...COLLECTION_KEYS };
+  static BACKUP_SCHEMA_VERSION = BACKUP_SCHEMA_VERSION;
 
   static randomUUID() {
     if (typeof globalThis !== 'undefined') {
@@ -162,6 +165,127 @@ export class DataManager {
     return DataManager.getSettings();
   }
 
+  static exportAll() {
+    const snapshot = {
+      data: {},
+      exportedAt: DataManager.now(),
+      schemaVersion: BACKUP_SCHEMA_VERSION,
+      version: BACKUP_SCHEMA_VERSION
+    };
+    Object.keys(COLLECTION_KEYS).forEach((collectionName) => {
+      const key = COLLECTION_KEYS[collectionName];
+      if (collectionName === 'settings') {
+        const storedSettings = DataManager.load(key);
+        snapshot.data[collectionName] = DataManager.#sanitizeSettingsSnapshot(storedSettings);
+      } else {
+        const storedCollection = DataManager.load(key);
+        snapshot.data[collectionName] = DataManager.#sanitizeCollectionSnapshot(storedCollection);
+      }
+    });
+    return snapshot;
+  }
+
+  static parseBackupPayload(input) {
+    let payload = input;
+    if (payload instanceof ArrayBuffer) {
+      if (typeof TextDecoder !== 'undefined') {
+        payload = new TextDecoder().decode(payload);
+      } else {
+        const bytes = new Uint8Array(payload);
+        let result = '';
+        for (let index = 0; index < bytes.length; index += 1) {
+          result += String.fromCharCode(bytes[index]);
+        }
+        payload = result;
+      }
+    }
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch (error) {
+        throw new Error('Backup file is not valid JSON.');
+      }
+    }
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Backup payload must be an object.');
+    }
+
+    const rawVersion = payload.schemaVersion ?? payload.version;
+    const schemaVersion = Number.parseInt(rawVersion, 10);
+    if (!Number.isFinite(schemaVersion) || schemaVersion <= 0) {
+      throw new Error('Backup schema version is invalid.');
+    }
+    if (schemaVersion > BACKUP_SCHEMA_VERSION) {
+      throw new Error('This backup was created with a newer version of Zantra Invoicing and cannot be restored.');
+    }
+
+    const data = payload.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Backup payload is missing data collections.');
+    }
+
+    const sanitized = {
+      schemaVersion,
+      version: schemaVersion,
+      exportedAt: typeof payload.exportedAt === 'string' ? payload.exportedAt : '',
+      data: {}
+    };
+
+    Object.keys(COLLECTION_KEYS).forEach((collectionName) => {
+      const value = data[collectionName];
+      if (collectionName === 'settings') {
+        sanitized.data[collectionName] = DataManager.#sanitizeSettingsSnapshot(value);
+      } else {
+        sanitized.data[collectionName] = DataManager.#sanitizeCollectionSnapshot(value);
+      }
+    });
+
+    return sanitized;
+  }
+
+  static restoreAll(input) {
+    const payload = DataManager.#isNormalizedBackupPayload(input) ? input : DataManager.parseBackupPayload(input);
+    const storage = resolveStorage();
+    if (!storage) {
+      throw new Error('Backup restore is unavailable because localStorage is not supported.');
+    }
+
+    const previousState = {};
+    Object.keys(COLLECTION_KEYS).forEach((collectionName) => {
+      const key = COLLECTION_KEYS[collectionName];
+      previousState[collectionName] = clone(DataManager.load(key));
+    });
+
+    const collections = Object.keys(COLLECTION_KEYS);
+    try {
+      collections.forEach((collectionName) => {
+        const key = COLLECTION_KEYS[collectionName];
+        const value = payload.data[collectionName];
+        const toPersist =
+          collectionName === 'settings'
+            ? DataManager.#sanitizeSettingsSnapshot(value)
+            : DataManager.#sanitizeCollectionSnapshot(value);
+        const success = DataManager.save(key, toPersist);
+        if (!success) {
+          throw new Error(`Failed to persist collection "${collectionName}".`);
+        }
+      });
+      return true;
+    } catch (error) {
+      collections.forEach((collectionName) => {
+        const key = COLLECTION_KEYS[collectionName];
+        const previous = previousState[collectionName];
+        if (previous === null || previous === undefined) {
+          DataManager.remove(key);
+        } else {
+          DataManager.save(key, previous);
+        }
+      });
+      throw error instanceof Error ? error : new Error('Failed to restore backup.');
+    }
+  }
+
   static listClients() {
     return DataManager.#getCollection(COLLECTION_KEYS.clients);
   }
@@ -269,6 +393,55 @@ export class DataManager {
       return value.trim();
     }
     return DataManager.randomUUID();
+  }
+
+  static #sanitizeCollectionSnapshot(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+      .map((item) => clone(item));
+  }
+
+  static #sanitizeSettingsSnapshot(value) {
+    const base = { ...DEFAULT_SETTINGS };
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      Object.keys(base).forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          const incoming = value[key];
+          if (typeof base[key] === 'number') {
+            const numeric = Number.parseFloat(incoming);
+            if (Number.isFinite(numeric)) {
+              base[key] = numeric;
+            }
+          } else if (typeof base[key] === 'string') {
+            if (incoming === null || incoming === undefined) {
+              base[key] = '';
+            } else {
+              base[key] = String(incoming);
+            }
+          } else {
+            base[key] = clone(incoming);
+          }
+        }
+      });
+    }
+    base.gstRate = normalizeNumber(base.gstRate ?? DEFAULT_SETTINGS.gstRate);
+    if (typeof base.updatedAt !== 'string') {
+      base.updatedAt = '';
+    }
+    return base;
+  }
+
+  static #isNormalizedBackupPayload(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return false;
+    }
+    if (!value.data || typeof value.data !== 'object' || Array.isArray(value.data)) {
+      return false;
+    }
+    return Object.keys(COLLECTION_KEYS).every((key) => Object.prototype.hasOwnProperty.call(value.data, key));
   }
 }
 

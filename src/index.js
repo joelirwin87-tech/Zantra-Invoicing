@@ -10,11 +10,13 @@ import { DataManager } from './data/DataManager.js';
 import { ClientManager } from './managers/ClientManager.js';
 import { ServiceManager } from './managers/ServiceManager.js';
 import { InvoiceManager } from './managers/InvoiceManager.js';
+import { InvoiceDocumentManager } from './managers/InvoiceDocumentManager.js';
 import { QuoteManager } from './managers/QuoteManager.js';
 import { PaymentManager } from './managers/PaymentManager.js';
 import { ReportManager } from './managers/ReportManager.js';
 import { ExportManager } from './managers/ExportManager.js';
 import { SettingsManager } from './managers/SettingsManager.js';
+import { BackupManager } from './managers/BackupManager.js';
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -294,6 +296,7 @@ class ZantraApp {
     this.cacheDom();
     this.setupNavigation();
     this.bindHeaderActions();
+    this.bindBackupActions();
     this.refreshData();
     this.renderAll();
     this.exposeGlobals();
@@ -317,7 +320,9 @@ class ZantraApp {
       openJobs: document.querySelector('[data-dashboard-value="openJobs"]'),
       invoicesDue: document.querySelector('[data-dashboard-value="invoicesDue"]'),
       quoteApproval: document.querySelector('[data-dashboard-value="quoteApproval"]'),
-      paymentTime: document.querySelector('[data-dashboard-value="paymentTime"]')
+      paymentTime: document.querySelector('[data-dashboard-value="paymentTime"]'),
+      upcomingRecurring: document.querySelector('[data-dashboard-value="upcomingRecurring"]'),
+      overdueInvoices: document.querySelector('[data-dashboard-value="overdueInvoices"]')
     };
 
     this.dashboardOutstandingList = document.querySelector('[data-dashboard-outstanding]');
@@ -338,6 +343,10 @@ class ZantraApp {
     this.paymentHistoryBody = document.querySelector('[data-table="payments-history"] tbody');
 
     this.settingsForm = document.querySelector('#settings-form');
+    this.backupExportButton = document.querySelector('[data-action="export-backup"]');
+    this.backupRestoreButton = document.querySelector('[data-action="restore-backup"]');
+    this.backupFileInput = document.querySelector('[data-backup-input]');
+    this.backupStatus = document.querySelector('[data-backup-feedback]');
     this.reportCanvas = document.getElementById('reports-chart');
     this.gstExportForm = document.querySelector('[data-gst-export-form]');
     this.gstExportStartInput = this.gstExportForm?.querySelector('[data-gst-export-start]') ?? null;
@@ -472,6 +481,107 @@ class ZantraApp {
     }
   }
 
+  bindBackupActions() {
+    if (!this.backupExportButton && !this.backupRestoreButton) {
+      return;
+    }
+
+    const setLoading = (loading) => {
+      const isLoading = Boolean(loading);
+      const controls = [this.backupExportButton, this.backupRestoreButton];
+      controls.forEach((control) => {
+        if (control) {
+          control.disabled = isLoading;
+          control.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        }
+      });
+      if (this.backupStatus) {
+        this.backupStatus.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+      }
+    };
+
+    const setStatus = (message = '', state = 'idle') => {
+      if (!this.backupStatus) {
+        return;
+      }
+      this.backupStatus.textContent = message;
+      if (!state || state === 'idle') {
+        this.backupStatus.removeAttribute('data-state');
+      } else {
+        this.backupStatus.setAttribute('data-state', state);
+      }
+    };
+
+    const describeExportedAt = (value) => {
+      if (!value) {
+        return '';
+      }
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) {
+        return '';
+      }
+      const date = new Date(parsed);
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    };
+
+    setStatus('', 'idle');
+    setLoading(false);
+
+    if (this.backupExportButton) {
+      this.backupExportButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        try {
+          setLoading(true);
+          setStatus('Preparing backup...', 'loading');
+          const payload = await BackupManager.downloadBackup();
+          const exportedAt = describeExportedAt(payload.exportedAt);
+          setStatus(
+            exportedAt ? `Backup downloaded (${exportedAt}). Keep it in a safe place.` : 'Backup downloaded. Keep it in a safe place.',
+            'success'
+          );
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Failed to export backup.', 'error');
+        } finally {
+          setLoading(false);
+        }
+      });
+    }
+
+    if (this.backupRestoreButton && this.backupFileInput) {
+      this.backupRestoreButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.backupFileInput.click();
+      });
+
+      this.backupFileInput.addEventListener('change', async (event) => {
+        const [file] = event.target.files || [];
+        if (!file) {
+          setStatus('', 'idle');
+          return;
+        }
+        try {
+          setLoading(true);
+          setStatus('Restoring backup...', 'loading');
+          const payload = await BackupManager.restoreBackup(file);
+          const exportedAt = describeExportedAt(payload.exportedAt);
+          setStatus(
+            exportedAt ? `Backup restored (${exportedAt}).` : 'Backup restored successfully.',
+            'success'
+          );
+          this.refreshData();
+          this.renderAll();
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Failed to restore backup.', 'error');
+        } finally {
+          setLoading(false);
+          this.backupFileInput.value = '';
+        }
+      });
+    }
+  }
+
   refreshData() {
     this.state.clients = ClientManager.list();
     this.state.services = ServiceManager.list();
@@ -516,6 +626,18 @@ class ZantraApp {
     }
     if (this.dashboardMetrics.paymentTime) {
       this.dashboardMetrics.paymentTime.textContent = `${metrics.averagePaymentTime} days`;
+    }
+    if (this.dashboardMetrics.upcomingRecurring) {
+      const upcomingLabel = metrics.upcomingRecurringCount === 1 ? 'invoice' : 'invoices';
+      this.dashboardMetrics.upcomingRecurring.textContent = `${metrics.upcomingRecurringCount} ${upcomingLabel} · ${formatCurrency(
+        metrics.upcomingRecurringAmount
+      )}`;
+    }
+    if (this.dashboardMetrics.overdueInvoices) {
+      const overdueLabel = metrics.overdueInvoiceCount === 1 ? 'invoice' : 'invoices';
+      this.dashboardMetrics.overdueInvoices.textContent = `${metrics.overdueInvoiceCount} ${overdueLabel} · ${formatCurrency(
+        metrics.overdueInvoiceAmount
+      )}`;
     }
 
     if (this.dashboardOutstandingList) {
@@ -774,6 +896,8 @@ class ZantraApp {
               ? `<div class="status-meta">Balance ${formatCurrency(invoice.balanceDue ?? invoice.total)}</div>`
               : '';
           const actions = [
+            `<button class="btn btn--sm btn--ghost" data-action="print" data-id="${invoice.id}">Print</button>`,
+            `<button class="btn btn--sm btn--secondary" data-action="email" data-id="${invoice.id}">Email</button>`,
             `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${invoice.id}">Edit</button>`,
             (invoice.balanceDue ?? invoice.total) > 0
               ? `<button class="btn btn--sm btn--primary" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
@@ -795,10 +919,25 @@ class ZantraApp {
             <td>${statusMarkup}${paidMeta}${balanceMeta}</td>
             <td class="text-right">
               <div class="table-actions">${actions}</div>
+              <p class="table-actions__message error" data-role="actions-message" role="status" aria-live="polite" hidden></p>
             </td>
           `;
           this.invoiceListBody.appendChild(row);
         });
+
+      const getMessageElement = (button) =>
+        button.closest('td')?.querySelector('[data-role="actions-message"]') ?? null;
+      const showMessage = (element, message) => {
+        if (!element) {
+          return;
+        }
+        element.textContent = message;
+        if (message) {
+          element.removeAttribute('hidden');
+        } else {
+          element.setAttribute('hidden', '');
+        }
+      };
 
       this.invoiceListBody.querySelectorAll('[data-action="mark-paid"]').forEach((button) => {
         button.addEventListener('click', (event) => {
@@ -816,8 +955,60 @@ class ZantraApp {
             PaymentManager.recordPayment(invoiceId, amountDue, new Date());
             this.refreshData();
             this.renderAll();
+            showMessage(getMessageElement(button), '');
           } catch (error) {
             console.error(error);
+          }
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="print"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          const messageElement = getMessageElement(button);
+          showMessage(messageElement, '');
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (!invoice) {
+            showMessage(messageElement, 'Invoice could not be found.');
+            return;
+          }
+          try {
+            const client = ClientManager.findById(invoice.clientId) || null;
+            InvoiceDocumentManager.printInvoice(invoice, client, this.state.settings);
+          } catch (error) {
+            console.error(error);
+            showMessage(messageElement, 'Unable to open print preview. Check your pop-up settings.');
+          }
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="email"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          const messageElement = getMessageElement(button);
+          showMessage(messageElement, '');
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (!invoice) {
+            showMessage(messageElement, 'Invoice could not be found.');
+            return;
+          }
+          const client = ClientManager.findById(invoice.clientId);
+          if (!client) {
+            showMessage(messageElement, 'Client record is missing. Update the client list and try again.');
+            return;
+          }
+          if (!client.email) {
+            const displayName = client.businessName || client.name || 'this client';
+            showMessage(messageElement, `Add an email address for ${displayName} to send invoices.`);
+            return;
+          }
+          try {
+            InvoiceDocumentManager.emailInvoice(invoice, client, this.state.settings);
+          } catch (error) {
+            console.error(error);
+            showMessage(messageElement, 'Unable to open your email client.');
           }
         });
       });
@@ -1669,11 +1860,12 @@ class ZantraApp {
         ClientManager,
         ServiceManager,
         InvoiceManager,
+        InvoiceDocumentManager,
         QuoteManager,
         PaymentManager,
         ReportManager,
-        ExportManager,
-        SettingsManager
+        SettingsManager,
+        BackupManager
       };
     }
   }
@@ -1689,9 +1881,10 @@ export {
   ClientManager,
   ServiceManager,
   InvoiceManager,
+  InvoiceDocumentManager,
   QuoteManager,
   PaymentManager,
   ReportManager,
-  ExportManager,
-  SettingsManager
+  SettingsManager,
+  BackupManager
 };
