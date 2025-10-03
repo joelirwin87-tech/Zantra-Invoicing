@@ -896,6 +896,20 @@
                 <button class="btn btn--primary btn--lg save-settings-btn" type="submit">Save settings</button>
               </div>
             </form>
+            <section class="card settings-backup-card" aria-labelledby="settings-backup-title">
+              <header class="card__header">
+                <h2 id="settings-backup-title" class="card__title">Backup &amp; restore</h2>
+                <p class="card__subtitle">Download a full JSON backup or restore your invoicing data.</p>
+              </header>
+              <div class="card__body">
+                <div class="settings-backup-card__actions">
+                  <button type="button" class="btn btn--secondary btn--md" data-action="export-backup">Export backup</button>
+                  <button type="button" class="btn btn--ghost btn--md" data-action="restore-backup">Restore backup</button>
+                  <input type="file" accept="application/json" data-backup-input hidden />
+                </div>
+                <p class="settings-backup-card__status" role="status" aria-live="polite" data-backup-feedback></p>
+              </div>
+            </section>
           </section>
     </div>
   </main>
