@@ -329,6 +329,17 @@ small,
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.card__title {
+  font-size: var(--text-lg);
+  margin: 0;
+}
+
+.card__subtitle {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
 .card__header--toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -698,6 +709,35 @@ textarea {
   color: #ff94a6;
 }
 
+.settings-backup-card {
+  margin-top: var(--space-6);
+}
+
+.settings-backup-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.settings-backup-card__status {
+  min-height: 1.25em;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.settings-backup-card__status[data-state='loading'] {
+  color: var(--accent-2);
+}
+
+.settings-backup-card__status[data-state='success'] {
+  color: #34d399;
+}
+
+.settings-backup-card__status[data-state='error'] {
+  color: #ff94a6;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -826,6 +866,12 @@ textarea {
 .table-actions .btn,
 .table-actions .status-pill {
   margin-inline-start: 0;
+}
+
+.table-actions__message {
+  margin-top: var(--space-2);
+  text-align: right;
+  color: #ff94a6;
 }
 
 .toolbar {
@@ -1306,6 +1352,37 @@ textarea {
   color: #0b0b16;
 }
 
+.report-card__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.report-card__form-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 40rem) {
+  .report-card__form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+.report-card__form .field label {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.report-card__form .field input,
+.report-card__form .field select {
+  background: rgba(15, 15, 31, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--text);
+  padding: var(--space-3);
+}
+
 .report-visuals {
   background: rgba(11, 11, 22, 0.72);
   border-radius: calc(var(--radius) + 4px);
@@ -1456,6 +1533,16 @@ textarea {
 @media (min-width: 640px) {
   .form-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.report-export .form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  .report-export .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

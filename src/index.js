@@ -10,11 +10,13 @@ import { DataManager } from './data/DataManager.js';
 import { ClientManager } from './managers/ClientManager.js';
 import { ServiceManager } from './managers/ServiceManager.js';
 import { InvoiceManager } from './managers/InvoiceManager.js';
+import { InvoiceDocumentManager } from './managers/InvoiceDocumentManager.js';
 import { QuoteManager } from './managers/QuoteManager.js';
 import { PaymentManager } from './managers/PaymentManager.js';
 import { ReportManager } from './managers/ReportManager.js';
+import { ExportManager } from './managers/ExportManager.js';
 import { SettingsManager } from './managers/SettingsManager.js';
-import { InvoiceDocumentManager } from './managers/InvoiceDocumentManager.js';
+import { BackupManager } from './managers/BackupManager.js';
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -34,6 +36,42 @@ const formatDate = (value) => {
     return '';
   }
   return new Date(timestamp).toLocaleDateString();
+};
+
+const toStartOfDay = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
+const differenceInDays = (target, reference = new Date()) => {
+  const targetDate = toStartOfDay(target);
+  const referenceDate = toStartOfDay(reference);
+  if (!targetDate || !referenceDate) {
+    return null;
+  }
+  const diffMs = targetDate.getTime() - referenceDate.getTime();
+  return Math.round(diffMs / (24 * 60 * 60 * 1000));
+};
+
+const formatRelativeDate = (value) => {
+  const diff = differenceInDays(value, new Date());
+  if (diff === null) {
+    return '';
+  }
+  if (diff === 0) {
+    return 'today';
+  }
+  if (diff > 0) {
+    return `in ${diff} day${diff === 1 ? '' : 's'}`;
+  }
+  const abs = Math.abs(diff);
+  return `${abs} day${abs === 1 ? '' : 's'} ago`;
 };
 
 const parseNumberInput = (input) => {
@@ -276,22 +314,28 @@ class ZantraApp {
       invoices: [],
       quotes: [],
       payments: [],
+      recurringSchedules: [],
       settings: SettingsManager.get()
     };
     this.reportChart = null;
     this.invoiceFormInitialized = false;
     this.quoteFormInitialized = false;
+    this.recurringFormInitialized = false;
     this.clientFormInitialized = false;
     this.serviceFormInitialized = false;
     this.settingsFormInitialized = false;
+    this.gstExportInitialized = false;
     this.toastDismissTimeout = null;
+    this.recentlyGeneratedRecurringInvoices = [];
     this.handleQuoteListClick = this.handleQuoteListClick.bind(this);
+    this.handleGstExportDownload = this.handleGstExportDownload.bind(this);
   }
 
   init() {
     this.cacheDom();
     this.setupNavigation();
     this.bindHeaderActions();
+    this.bindBackupActions();
     this.refreshData();
     this.renderAll();
     this.exposeGlobals();
@@ -309,19 +353,27 @@ class ZantraApp {
     this.resumeSetupButton = document.querySelector('.resume-setup-btn');
     this.newInvoiceButton = document.querySelector('.new-invoice-btn');
     this.sectionInvoiceButtons = Array.from(document.querySelectorAll('[data-action="open-invoice-form"]'));
+    this.newRecurringButton = document.querySelector('[data-action="open-recurring-form"]');
     this.newQuoteButton = document.querySelector('[data-action="open-quote-form"]');
+    this.recurringFormButtons = Array.from(document.querySelectorAll('[data-action="open-recurring-form"]'));
 
     this.dashboardMetrics = {
       openJobs: document.querySelector('[data-dashboard-value="openJobs"]'),
       invoicesDue: document.querySelector('[data-dashboard-value="invoicesDue"]'),
       quoteApproval: document.querySelector('[data-dashboard-value="quoteApproval"]'),
-      paymentTime: document.querySelector('[data-dashboard-value="paymentTime"]')
+      paymentTime: document.querySelector('[data-dashboard-value="paymentTime"]'),
+      upcomingRecurring: document.querySelector('[data-dashboard-value="upcomingRecurring"]'),
+      overdueInvoices: document.querySelector('[data-dashboard-value="overdueInvoices"]')
     };
 
     this.dashboardOutstandingList = document.querySelector('[data-dashboard-outstanding]');
+    this.dashboardRecurringList = document.querySelector('[data-dashboard-recurring]');
 
     this.invoiceForm = document.querySelector('#invoice-form');
     this.invoiceListBody = document.querySelector('[data-table="invoices"] tbody');
+
+    this.recurringForm = document.querySelector('#recurring-form');
+    this.recurringListBody = document.querySelector('[data-table="recurring"] tbody');
 
     this.quoteForm = document.querySelector('#quote-form');
     this.quoteListBody = document.querySelector('[data-table="quotes"] tbody');
@@ -336,7 +388,16 @@ class ZantraApp {
     this.paymentHistoryBody = document.querySelector('[data-table="payments-history"] tbody');
 
     this.settingsForm = document.querySelector('#settings-form');
+    this.backupExportButton = document.querySelector('[data-action="export-backup"]');
+    this.backupRestoreButton = document.querySelector('[data-action="restore-backup"]');
+    this.backupFileInput = document.querySelector('[data-backup-input]');
+    this.backupStatus = document.querySelector('[data-backup-feedback]');
     this.reportCanvas = document.getElementById('reports-chart');
+    this.gstExportForm = document.querySelector('[data-gst-export-form]');
+    this.gstExportStartInput = this.gstExportForm?.querySelector('[data-gst-export-start]') ?? null;
+    this.gstExportEndInput = this.gstExportForm?.querySelector('[data-gst-export-end]') ?? null;
+    this.gstExportFeedback = this.gstExportForm?.querySelector('[data-gst-export-feedback]') ?? null;
+    this.gstExportButton = this.gstExportForm?.querySelector('[data-action="download-gst-csv"]') ?? null;
 
     this.toastRegion = document.querySelector('[data-toast-region]');
 
@@ -350,6 +411,23 @@ class ZantraApp {
       services: this.state.services,
       gstRate: this.state.settings.gstRate
     });
+    if (this.recurringForm) {
+      this.recurringFormEditor = new LineItemEditor(this.recurringForm, {
+        onTotalsChange: (items) => this.updateRecurringTotals(items),
+        services: this.state.services,
+        gstRate: this.state.settings.gstRate
+      });
+    } else {
+      this.recurringFormEditor = null;
+    }
+
+    if (this.recurringForm) {
+      this.recurringFormEditor = new LineItemEditor(this.recurringForm, {
+        onTotalsChange: (items) => this.updateRecurringTotals(items),
+        services: this.state.services,
+        gstRate: this.state.settings.gstRate
+      });
+    }
 
     if (this.quoteListBody) {
       this.quoteListBody.addEventListener('click', this.handleQuoteListClick);
@@ -447,6 +525,15 @@ class ZantraApp {
         this.toggleInvoiceForm(true);
       });
     }
+    if (this.recurringFormButtons?.length) {
+      this.recurringFormButtons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          this.activateSection('invoices');
+          this.toggleRecurringForm(true);
+        });
+      });
+    }
     if (this.sectionInvoiceButtons.length) {
       this.sectionInvoiceButtons.forEach((button) => {
         button.addEventListener('click', (event) => {
@@ -454,6 +541,13 @@ class ZantraApp {
           this.activateSection('invoices');
           this.toggleInvoiceForm(true);
         });
+      });
+    }
+    if (this.newRecurringButton) {
+      this.newRecurringButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.activateSection('invoices');
+        this.toggleRecurringForm(true);
       });
     }
     if (this.newQuoteButton) {
@@ -465,7 +559,109 @@ class ZantraApp {
     }
   }
 
+  bindBackupActions() {
+    if (!this.backupExportButton && !this.backupRestoreButton) {
+      return;
+    }
+
+    const setLoading = (loading) => {
+      const isLoading = Boolean(loading);
+      const controls = [this.backupExportButton, this.backupRestoreButton];
+      controls.forEach((control) => {
+        if (control) {
+          control.disabled = isLoading;
+          control.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        }
+      });
+      if (this.backupStatus) {
+        this.backupStatus.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+      }
+    };
+
+    const setStatus = (message = '', state = 'idle') => {
+      if (!this.backupStatus) {
+        return;
+      }
+      this.backupStatus.textContent = message;
+      if (!state || state === 'idle') {
+        this.backupStatus.removeAttribute('data-state');
+      } else {
+        this.backupStatus.setAttribute('data-state', state);
+      }
+    };
+
+    const describeExportedAt = (value) => {
+      if (!value) {
+        return '';
+      }
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) {
+        return '';
+      }
+      const date = new Date(parsed);
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    };
+
+    setStatus('', 'idle');
+    setLoading(false);
+
+    if (this.backupExportButton) {
+      this.backupExportButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        try {
+          setLoading(true);
+          setStatus('Preparing backup...', 'loading');
+          const payload = await BackupManager.downloadBackup();
+          const exportedAt = describeExportedAt(payload.exportedAt);
+          setStatus(
+            exportedAt ? `Backup downloaded (${exportedAt}). Keep it in a safe place.` : 'Backup downloaded. Keep it in a safe place.',
+            'success'
+          );
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Failed to export backup.', 'error');
+        } finally {
+          setLoading(false);
+        }
+      });
+    }
+
+    if (this.backupRestoreButton && this.backupFileInput) {
+      this.backupRestoreButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.backupFileInput.click();
+      });
+
+      this.backupFileInput.addEventListener('change', async (event) => {
+        const [file] = event.target.files || [];
+        if (!file) {
+          setStatus('', 'idle');
+          return;
+        }
+        try {
+          setLoading(true);
+          setStatus('Restoring backup...', 'loading');
+          const payload = await BackupManager.restoreBackup(file);
+          const exportedAt = describeExportedAt(payload.exportedAt);
+          setStatus(
+            exportedAt ? `Backup restored (${exportedAt}).` : 'Backup restored successfully.',
+            'success'
+          );
+          this.refreshData();
+          this.renderAll();
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Failed to restore backup.', 'error');
+        } finally {
+          setLoading(false);
+          this.backupFileInput.value = '';
+        }
+      });
+    }
+  }
+
   refreshData() {
+    this.recentlyGeneratedRecurringInvoices = RecurringInvoiceManager.executeDueSchedules();
     this.state.clients = ClientManager.list();
     this.state.services = ServiceManager.list();
     this.state.invoices = InvoiceManager.list().map((invoice) => ({
@@ -477,23 +673,30 @@ class ZantraApp {
       type: quote.type || 'quote'
     }));
     this.state.payments = PaymentManager.list();
+    this.state.recurringSchedules = RecurringInvoiceManager.list();
     this.state.settings = SettingsManager.get();
 
     this.invoiceFormEditor.refreshServices(this.state.services);
     this.quoteFormEditor.refreshServices(this.state.services);
     this.invoiceFormEditor.gstRate = this.state.settings.gstRate;
     this.quoteFormEditor.gstRate = this.state.settings.gstRate;
+    if (this.recurringFormEditor) {
+      this.recurringFormEditor.refreshServices(this.state.services);
+      this.recurringFormEditor.gstRate = this.state.settings.gstRate;
+    }
   }
 
   renderAll() {
     this.renderDashboard();
     this.renderInvoices();
+    this.renderRecurringSchedules();
     this.renderQuotes();
     this.renderClients();
     this.renderServices();
     this.renderPayments();
     this.renderReports();
     this.renderSettings();
+    this.notifyRecurringGeneration();
   }
 
   renderDashboard() {
@@ -509,6 +712,18 @@ class ZantraApp {
     }
     if (this.dashboardMetrics.paymentTime) {
       this.dashboardMetrics.paymentTime.textContent = `${metrics.averagePaymentTime} days`;
+    }
+    if (this.dashboardMetrics.upcomingRecurring) {
+      const upcomingLabel = metrics.upcomingRecurringCount === 1 ? 'invoice' : 'invoices';
+      this.dashboardMetrics.upcomingRecurring.textContent = `${metrics.upcomingRecurringCount} ${upcomingLabel} · ${formatCurrency(
+        metrics.upcomingRecurringAmount
+      )}`;
+    }
+    if (this.dashboardMetrics.overdueInvoices) {
+      const overdueLabel = metrics.overdueInvoiceCount === 1 ? 'invoice' : 'invoices';
+      this.dashboardMetrics.overdueInvoices.textContent = `${metrics.overdueInvoiceCount} ${overdueLabel} · ${formatCurrency(
+        metrics.overdueInvoiceAmount
+      )}`;
     }
 
     if (this.dashboardOutstandingList) {
@@ -529,6 +744,59 @@ class ZantraApp {
         });
       }
     }
+
+    if (this.dashboardRecurringList) {
+      clearChildren(this.dashboardRecurringList);
+      const upcoming = this.state.recurringSchedules
+        .filter((schedule) => schedule.nextRun)
+        .sort((a, b) => Date.parse(a.nextRun) - Date.parse(b.nextRun));
+      if (!upcoming.length) {
+        const empty = document.createElement('li');
+        empty.textContent = 'No recurring invoices scheduled.';
+        this.dashboardRecurringList.appendChild(empty);
+      } else {
+        const now = Date.now();
+        upcoming.slice(0, 5).forEach((schedule) => {
+          const nextRunTime = Date.parse(schedule.nextRun);
+          const status = Number.isNaN(nextRunTime)
+            ? 'Scheduled'
+            : nextRunTime < now
+            ? 'Overdue'
+            : 'Due';
+          const label = `${status} ${formatDate(schedule.nextRun)}`;
+          const item = document.createElement('li');
+          item.innerHTML = `<strong>${schedule.name}</strong> · ${schedule.clientBusinessName || schedule.clientName} · ${
+            schedule.frequencyLabel
+          } · ${label}`;
+          this.dashboardRecurringList.appendChild(item);
+        });
+      }
+    }
+  }
+
+  notifyRecurringGeneration() {
+    if (!Array.isArray(this.recentlyGeneratedRecurringInvoices)) {
+      return;
+    }
+    const results = this.recentlyGeneratedRecurringInvoices;
+    if (!results.length) {
+      return;
+    }
+
+    const count = results.length;
+    const names = Array.from(
+      new Set(
+        results
+          .map((result) => result?.schedule?.name || '')
+          .filter((name) => typeof name === 'string' && name.trim())
+      )
+    );
+    const displayedNames = names.slice(0, 3).join(', ');
+    const moreSuffix = names.length > 3 ? ', …' : '';
+    const scheduleSummary = names.length ? ` from ${displayedNames}${moreSuffix}` : '';
+    const message = `Generated ${count} recurring invoice${count === 1 ? '' : 's'}${scheduleSummary}.`;
+    this.showToast(message, 'success');
+    this.recentlyGeneratedRecurringInvoices = [];
   }
 
   toggleInvoiceForm(visible, invoice = null) {
@@ -612,6 +880,113 @@ class ZantraApp {
       this.invoiceFormEditor.addRow();
     }
     this.updateInvoiceTotals(invoice.lineItems || []);
+  }
+
+  toggleRecurringForm(visible, schedule = null) {
+    if (!this.recurringForm) {
+      return;
+    }
+    const feedback = this.recurringForm.querySelector('[data-feedback]');
+    if (feedback) {
+      feedback.textContent = '';
+    }
+    const idField = this.recurringForm.querySelector('[name="scheduleId"]');
+    if (!visible) {
+      this.recurringFormEditor?.removeAll();
+      this.recurringForm.reset();
+      this.updateRecurringTotals([]);
+      toggleHidden(this.recurringForm, true);
+      if (idField) {
+        idField.value = '';
+      }
+      delete this.recurringForm.dataset.mode;
+      return;
+    }
+
+    toggleHidden(this.recurringForm, false);
+    this.recurringForm.reset();
+    this.recurringFormEditor?.removeAll();
+
+    if (schedule) {
+      this.recurringForm.dataset.mode = 'edit';
+      if (idField) {
+        idField.value = schedule.id;
+      }
+      this.populateRecurringForm(schedule);
+    } else {
+      this.recurringForm.dataset.mode = 'create';
+      if (idField) {
+        idField.value = '';
+      }
+      const today = new Date();
+      const startInput = this.recurringForm.querySelector('[name="startDate"]');
+      const nextInput = this.recurringForm.querySelector('[name="nextRun"]');
+      setDateInputValue(startInput, today);
+      setDateInputValue(nextInput, today);
+      const dueDaysInput = this.recurringForm.querySelector('[name="dueDays"]');
+      if (dueDaysInput) {
+        dueDaysInput.value = '14';
+      }
+      const frequencySelect = this.recurringForm.querySelector('[name="frequency"]');
+      if (frequencySelect && !frequencySelect.value) {
+        const options = RecurringInvoiceManager.getFrequencyOptions();
+        if (options.length) {
+          const preferred = options.find((option) => option.value === 'monthly') || options[0];
+          frequencySelect.value = preferred.value;
+        }
+      }
+      this.recurringFormEditor?.addRow();
+      this.updateRecurringTotals(this.recurringFormEditor ? this.recurringFormEditor.getItems() : []);
+    }
+
+    const nameInput = this.recurringForm.querySelector('[name="name"]');
+    nameInput?.focus();
+    this.recurringForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  populateRecurringForm(schedule) {
+    if (!this.recurringForm || !schedule) {
+      return;
+    }
+    const nameInput = this.recurringForm.querySelector('[name="name"]');
+    if (nameInput) {
+      nameInput.value = schedule.name || '';
+    }
+    const clientSelect = this.recurringForm.querySelector('[name="clientId"]');
+    if (clientSelect) {
+      clientSelect.value = schedule.clientId || '';
+    }
+    const startInput = this.recurringForm.querySelector('[name="startDate"]');
+    const nextInput = this.recurringForm.querySelector('[name="nextRun"]');
+    setDateInputValue(startInput, schedule.startDate);
+    setDateInputValue(nextInput, schedule.nextRun || schedule.startDate);
+    const frequencySelect = this.recurringForm.querySelector('[name="frequency"]');
+    if (frequencySelect) {
+      frequencySelect.value = schedule.frequency || frequencySelect.value;
+    }
+    const dueDaysInput = this.recurringForm.querySelector('[name="dueDays"]');
+    if (dueDaysInput) {
+      dueDaysInput.value = Number.parseInt(schedule.dueDays, 10) || 14;
+    }
+    const notesInput = this.recurringForm.querySelector('[name="notes"]');
+    if (notesInput) {
+      notesInput.value = schedule.notes || '';
+    }
+
+    if (Array.isArray(schedule.lineItems) && schedule.lineItems.length) {
+      schedule.lineItems.forEach((item) => {
+        this.recurringFormEditor?.addRow({
+          serviceId: item.serviceId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          applyGst: item.applyGst
+        });
+      });
+    } else {
+      this.recurringFormEditor?.addRow();
+    }
+    this.updateRecurringTotals(schedule.lineItems || []);
   }
 
   toggleQuoteForm(visible, quote = null) {
@@ -707,6 +1082,20 @@ class ZantraApp {
     if (total) total.textContent = formatCurrency(totals.total);
   }
 
+  updateRecurringTotals(items) {
+    if (!this.recurringForm) {
+      return;
+    }
+    const lineItems = Array.isArray(items) ? items : [];
+    const totals = InvoiceManager.calculateTotals(lineItems, this.state.settings.gstRate);
+    const subtotal = this.recurringForm.querySelector('[data-recurring-total="subtotal"]');
+    const gst = this.recurringForm.querySelector('[data-recurring-total="gst"]');
+    const total = this.recurringForm.querySelector('[data-recurring-total="total"]');
+    if (subtotal) subtotal.textContent = formatCurrency(totals.subtotal);
+    if (gst) gst.textContent = formatCurrency(totals.gstTotal);
+    if (total) total.textContent = formatCurrency(totals.total);
+  }
+
   renderInvoices() {
     if (!this.invoiceForm || !this.invoiceListBody) {
       return;
@@ -767,6 +1156,8 @@ class ZantraApp {
               ? `<div class="status-meta">Balance ${formatCurrency(invoice.balanceDue ?? invoice.total)}</div>`
               : '';
           const actions = [
+            `<button class="btn btn--sm btn--ghost" data-action="print" data-id="${invoice.id}">Print</button>`,
+            `<button class="btn btn--sm btn--secondary" data-action="email" data-id="${invoice.id}">Email</button>`,
             `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${invoice.id}">Edit</button>`,
             `<button class="btn btn--sm btn--ghost" data-action="download" data-id="${invoice.id}">Download PDF</button>`,
             `<button class="btn btn--sm btn--ghost" data-action="email" data-id="${invoice.id}">Email</button>`,
@@ -790,10 +1181,25 @@ class ZantraApp {
             <td>${statusMarkup}${paidMeta}${balanceMeta}</td>
             <td class="text-right">
               <div class="table-actions">${actions}</div>
+              <p class="table-actions__message error" data-role="actions-message" role="status" aria-live="polite" hidden></p>
             </td>
           `;
           this.invoiceListBody.appendChild(row);
         });
+
+      const getMessageElement = (button) =>
+        button.closest('td')?.querySelector('[data-role="actions-message"]') ?? null;
+      const showMessage = (element, message) => {
+        if (!element) {
+          return;
+        }
+        element.textContent = message;
+        if (message) {
+          element.removeAttribute('hidden');
+        } else {
+          element.setAttribute('hidden', '');
+        }
+      };
 
       this.invoiceListBody.querySelectorAll('[data-action="mark-paid"]').forEach((button) => {
         button.addEventListener('click', (event) => {
@@ -811,8 +1217,60 @@ class ZantraApp {
             PaymentManager.recordPayment(invoiceId, amountDue, new Date());
             this.refreshData();
             this.renderAll();
+            showMessage(getMessageElement(button), '');
           } catch (error) {
             console.error(error);
+          }
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="print"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          const messageElement = getMessageElement(button);
+          showMessage(messageElement, '');
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (!invoice) {
+            showMessage(messageElement, 'Invoice could not be found.');
+            return;
+          }
+          try {
+            const client = ClientManager.findById(invoice.clientId) || null;
+            InvoiceDocumentManager.printInvoice(invoice, client, this.state.settings);
+          } catch (error) {
+            console.error(error);
+            showMessage(messageElement, 'Unable to open print preview. Check your pop-up settings.');
+          }
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="email"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          const messageElement = getMessageElement(button);
+          showMessage(messageElement, '');
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (!invoice) {
+            showMessage(messageElement, 'Invoice could not be found.');
+            return;
+          }
+          const client = ClientManager.findById(invoice.clientId);
+          if (!client) {
+            showMessage(messageElement, 'Client record is missing. Update the client list and try again.');
+            return;
+          }
+          if (!client.email) {
+            const displayName = client.businessName || client.name || 'this client';
+            showMessage(messageElement, `Add an email address for ${displayName} to send invoices.`);
+            return;
+          }
+          try {
+            InvoiceDocumentManager.emailInvoice(invoice, client, this.state.settings);
+          } catch (error) {
+            console.error(error);
+            showMessage(messageElement, 'Unable to open your email client.');
           }
         });
       });
@@ -882,6 +1340,161 @@ class ZantraApp {
     }
   }
 
+  renderRecurringSchedules() {
+    if (!this.recurringForm || !this.recurringListBody) {
+      return;
+    }
+
+    const clientSelect = this.recurringForm.querySelector('[name="clientId"]');
+    if (clientSelect) {
+      const currentValue = clientSelect.value;
+      clearChildren(clientSelect);
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Select client';
+      clientSelect.appendChild(placeholder);
+      this.state.clients.forEach((client) => {
+        const option = document.createElement('option');
+        option.value = client.id;
+        option.textContent = `${client.businessName} (${client.name})`;
+        clientSelect.appendChild(option);
+      });
+      if (currentValue) {
+        clientSelect.value = currentValue;
+      }
+    }
+
+    const frequencySelect = this.recurringForm.querySelector('[name="frequency"]');
+    if (frequencySelect) {
+      const currentValue = frequencySelect.value;
+      clearChildren(frequencySelect);
+      const options = RecurringInvoiceManager.getFrequencyOptions();
+      options.forEach(({ value, label }) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        frequencySelect.appendChild(option);
+      });
+      if (currentValue) {
+        frequencySelect.value = currentValue;
+      } else {
+        const preferred = options.find((option) => option.value === 'monthly');
+        if (preferred) {
+          frequencySelect.value = preferred.value;
+        }
+      }
+    }
+
+    if (!this.recurringFormInitialized) {
+      this.recurringForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleRecurringSubmit();
+      });
+      const addLineButton = this.recurringForm.querySelector('[data-action="add-line"]');
+      addLineButton?.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.recurringFormEditor?.addRow();
+      });
+      const cancelButton = this.recurringForm.querySelector('[data-action="cancel"]');
+      cancelButton?.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.toggleRecurringForm(false);
+      });
+      this.recurringFormInitialized = true;
+    }
+
+    clearChildren(this.recurringListBody);
+    if (!this.state.recurringSchedules.length) {
+      const emptyRow = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 6;
+      cell.textContent = 'No recurring schedules configured yet.';
+      emptyRow.appendChild(cell);
+      this.recurringListBody.appendChild(emptyRow);
+      return;
+    }
+
+    this.state.recurringSchedules.forEach((schedule) => {
+      const row = document.createElement('tr');
+      const clientLabel = schedule.clientBusinessName || schedule.clientName || 'Unknown client';
+      const clientMeta =
+        schedule.clientBusinessName &&
+        schedule.clientName &&
+        schedule.clientBusinessName !== schedule.clientName;
+      const actions = [
+        `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${schedule.id}">Edit</button>`,
+        `<button class="btn btn--sm btn--primary" data-action="run" data-id="${schedule.id}">Run now</button>`,
+        `<button class="btn btn--sm btn--destructive" data-action="delete" data-id="${schedule.id}">Delete</button>`
+      ].join('');
+      const lastRun = schedule.lastRun ? formatDate(schedule.lastRun) : '—';
+      const nextRun = schedule.nextRun ? formatDate(schedule.nextRun) : '—';
+      row.innerHTML = `
+        <td>
+          <div class="table-cell__primary">${schedule.name}</div>
+          ${schedule.description ? `<div class="status-meta">${schedule.description}</div>` : ''}
+        </td>
+        <td>
+          <div class="table-cell__primary">${clientLabel}</div>
+          ${clientMeta ? `<div class="status-meta">${schedule.clientName}</div>` : ''}
+        </td>
+        <td>${schedule.frequencyLabel}</td>
+        <td>${nextRun}</td>
+        <td>${lastRun}</td>
+        <td class="text-right">${actions}</td>
+      `;
+      this.recurringListBody.appendChild(row);
+    });
+
+    this.recurringListBody.querySelectorAll('[data-action="edit"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const scheduleId = button.getAttribute('data-id');
+        const schedule = this.state.recurringSchedules.find((item) => item.id === scheduleId);
+        if (!schedule) {
+          this.showToast('Unable to locate the selected schedule.', 'error');
+          return;
+        }
+        this.toggleRecurringForm(true, schedule);
+      });
+    });
+
+    this.recurringListBody.querySelectorAll('[data-action="run"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const scheduleId = button.getAttribute('data-id');
+        if (!scheduleId) {
+          return;
+        }
+        const outcome = RecurringInvoiceManager.runSchedule(scheduleId);
+        if (!outcome) {
+          this.showToast('Unable to run the schedule. Please try again.', 'error');
+          return;
+        }
+        this.showToast(`Invoice generated from ${outcome.schedule.name}.`, 'success');
+        this.refreshData();
+        this.renderAll();
+      });
+    });
+
+    this.recurringListBody.querySelectorAll('[data-action="delete"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const scheduleId = button.getAttribute('data-id');
+        if (!scheduleId) {
+          return;
+        }
+        const confirmed = window.confirm('Delete this recurring schedule? This action cannot be undone.');
+        if (!confirmed) {
+          return;
+        }
+        RecurringInvoiceManager.remove(scheduleId);
+        this.refreshData();
+        this.renderAll();
+        this.showToast('Recurring schedule removed.', 'info');
+      });
+    });
+  }
+
   handleInvoiceSubmit() {
     const form = this.invoiceForm;
     const invoiceId = form.querySelector('[name="invoiceId"]').value;
@@ -927,6 +1540,80 @@ class ZantraApp {
       console.error(error);
       if (feedback) {
         feedback.textContent = error.message;
+      }
+    }
+  }
+
+  handleRecurringSubmit() {
+    if (!this.recurringForm) {
+      return;
+    }
+    const form = this.recurringForm;
+    const scheduleId = form.querySelector('[name="scheduleId"]').value.trim();
+    const name = form.querySelector('[name="name"]').value.trim();
+    const clientId = form.querySelector('[name="clientId"]').value.trim();
+    const startDate = form.querySelector('[name="startDate"]').value;
+    let nextRun = form.querySelector('[name="nextRun"]').value;
+    const frequency = form.querySelector('[name="frequency"]').value;
+    const dueDaysInput = form.querySelector('[name="dueDays"]').value;
+    const notes = form.querySelector('[name="notes"]').value;
+    const items = this.recurringFormEditor ? this.recurringFormEditor.getItems() : [];
+    const feedback = form.querySelector('[data-feedback]');
+
+    if (feedback) {
+      feedback.textContent = '';
+    }
+
+    try {
+      if (!name) {
+        throw new Error('Provide a schedule name.');
+      }
+      if (!clientId) {
+        throw new Error('Select a client for the schedule.');
+      }
+      if (!startDate) {
+        throw new Error('Choose a start date.');
+      }
+      if (!nextRun) {
+        nextRun = startDate;
+      }
+      if (!frequency) {
+        throw new Error('Select a recurrence frequency.');
+      }
+      if (!items.length) {
+        throw new Error('Add at least one line item before saving.');
+      }
+      const dueDays = Number.parseInt(dueDaysInput, 10);
+      if (!Number.isFinite(dueDays) || dueDays < 1) {
+        throw new Error('Due in (days) must be at least 1.');
+      }
+
+      const payload = {
+        name,
+        clientId,
+        startDate,
+        nextRun,
+        frequency,
+        dueDays,
+        notes,
+        lineItems: items
+      };
+
+      if (scheduleId) {
+        RecurringInvoiceManager.update(scheduleId, payload);
+        this.showToast('Recurring schedule updated.', 'success');
+      } else {
+        RecurringInvoiceManager.create(payload);
+        this.showToast('Recurring schedule created.', 'success');
+      }
+
+      this.toggleRecurringForm(false);
+      this.refreshData();
+      this.renderAll();
+    } catch (error) {
+      console.error('Failed to save recurring schedule:', error);
+      if (feedback) {
+        feedback.textContent = error.message || 'Unable to save schedule. Please try again.';
       }
     }
   }
@@ -1521,6 +2208,19 @@ class ZantraApp {
     if (!this.reportCanvas) {
       return;
     }
+
+    if (this.gstExportForm && !this.gstExportFormInitialized) {
+      this.gstExportForm.addEventListener('submit', this.handleGstExportSubmit);
+      const startInput = this.gstExportForm.querySelector('[name="gstExportStart"]');
+      const endInput = this.gstExportForm.querySelector('[name="gstExportEnd"]');
+      if (startInput && !startInput.value && endInput && !endInput.value) {
+        const defaultRange = this.getDefaultGstExportRange();
+        setDateInputValue(startInput, defaultRange.start);
+        setDateInputValue(endInput, defaultRange.end);
+      }
+      this.gstExportFormInitialized = true;
+    }
+
     const ctx = this.reportCanvas.getContext('2d');
     const summary = ReportManager.getMonthlyInvoiceSummary(6);
     const gstSummary = ReportManager.getGstSummary();
@@ -1581,6 +2281,140 @@ class ZantraApp {
             }
           }
         });
+      }
+    }
+
+    if (this.gstExportForm && !this.gstExportInitialized) {
+      this.gstExportForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleGstExportDownload();
+      });
+      if (this.gstExportButton && this.gstExportButton.type === 'button') {
+        this.gstExportButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          this.handleGstExportDownload();
+        });
+      }
+      this.gstExportInitialized = true;
+    }
+  }
+
+  handleGstExportDownload() {
+    const startValue = this.gstExportStartInput?.value
+      ? this.gstExportStartInput.value.trim()
+      : '';
+    const endValue = this.gstExportEndInput?.value ? this.gstExportEndInput.value.trim() : '';
+    const feedback = this.gstExportFeedback ?? null;
+
+    if (feedback) {
+      delete feedback.dataset.tone;
+      feedback.textContent = '';
+    }
+
+    const setLoading = (isLoading) => {
+      if (!this.gstExportButton) {
+        return;
+      }
+      this.gstExportButton.disabled = isLoading;
+      if (isLoading) {
+        this.gstExportButton.setAttribute('aria-busy', 'true');
+      } else {
+        this.gstExportButton.removeAttribute('aria-busy');
+      }
+    };
+
+    setLoading(true);
+    try {
+      const result = ExportManager.downloadPaidInvoicesCsv({
+        startDate: startValue,
+        endDate: endValue
+      });
+      if (feedback) {
+        feedback.dataset.tone = 'success';
+        const invoiceLabel = result.rowCount === 1 ? 'invoice' : 'invoices';
+        feedback.textContent = `Downloaded ${result.rowCount} paid ${invoiceLabel}.`;
+      }
+    } catch (error) {
+      console.error(error);
+      if (feedback) {
+        feedback.dataset.tone = 'error';
+        feedback.textContent = error?.message ?? 'Unable to export GST CSV. Please try again.';
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  getDefaultGstExportRange() {
+    const now = new Date();
+    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    const start = new Date(now.getFullYear(), quarterStartMonth, 1);
+    const end = new Date(now.getFullYear(), quarterStartMonth + 3, 0);
+    return { start, end };
+  }
+
+  handleGstExportSubmit(event) {
+    event.preventDefault();
+    if (!this.gstExportForm) {
+      return;
+    }
+
+    const startInput = this.gstExportForm.querySelector('[name="gstExportStart"]');
+    const endInput = this.gstExportForm.querySelector('[name="gstExportEnd"]');
+    const statusInput = this.gstExportForm.querySelector('[name="gstExportStatus"]');
+    const submitButton = this.gstExportForm.querySelector('[data-action="download-gst-csv"]');
+
+    const startValue = startInput?.value;
+    const endValue = endInput?.value;
+    const statusValue = statusInput?.value;
+
+    if (!startValue || !endValue) {
+      this.showToast('Select a start and end date before exporting.', 'error');
+      return;
+    }
+
+    const startTimestamp = Date.parse(startValue);
+    const endTimestamp = Date.parse(endValue);
+
+    if (Number.isNaN(startTimestamp) || Number.isNaN(endTimestamp)) {
+      this.showToast('The selected dates are invalid. Please choose valid calendar dates.', 'error');
+      return;
+    }
+
+    if (startTimestamp > endTimestamp) {
+      this.showToast('Start date must be on or before the end date.', 'error');
+      return;
+    }
+
+    const filterStatus = statusValue && statusValue !== 'all' ? statusValue : undefined;
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.setAttribute('aria-busy', 'true');
+    }
+
+    try {
+      const exportResult = ExportManager.downloadGstCsv({
+        startDate: startValue,
+        endDate: endValue,
+        status: filterStatus
+      });
+      const startLabel = new Date(startTimestamp).toLocaleDateString();
+      const endLabel = new Date(endTimestamp).toLocaleDateString();
+      const rowCount = exportResult?.rowCount ?? 0;
+      const noun = rowCount === 1 ? 'invoice' : 'invoices';
+      this.showToast(
+        `Downloading GST CSV for ${rowCount} ${noun} (${startLabel} – ${endLabel}).`,
+        'success'
+      );
+    } catch (error) {
+      console.error('GST CSV export failed:', error);
+      const message = error?.message || 'Unable to export GST CSV. Please try again.';
+      this.showToast(message, 'error');
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.removeAttribute('aria-busy');
       }
     }
   }
@@ -1644,10 +2478,12 @@ class ZantraApp {
         ClientManager,
         ServiceManager,
         InvoiceManager,
+        InvoiceDocumentManager,
         QuoteManager,
         PaymentManager,
         ReportManager,
-        SettingsManager
+        SettingsManager,
+        BackupManager
       };
     }
   }
@@ -1663,8 +2499,10 @@ export {
   ClientManager,
   ServiceManager,
   InvoiceManager,
+  InvoiceDocumentManager,
   QuoteManager,
   PaymentManager,
   ReportManager,
-  SettingsManager
+  SettingsManager,
+  BackupManager
 };

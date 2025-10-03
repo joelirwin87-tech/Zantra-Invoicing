@@ -6,6 +6,7 @@ import { ClientManager } from '../src/managers/ClientManager.js';
 import { InvoiceManager } from '../src/managers/InvoiceManager.js';
 import { QuoteManager } from '../src/managers/QuoteManager.js';
 import { PaymentManager } from '../src/managers/PaymentManager.js';
+import { ExportManager } from '../src/managers/ExportManager.js';
 
 const createMockStorage = () => {
   const store = new Map();
@@ -158,5 +159,64 @@ describe('PaymentManager validations', () => {
     expect(PaymentManager.getOutstandingInvoices()).toHaveLength(0);
     expect(PaymentManager.getOutstandingBalance()).toBe(0);
     expect(PaymentManager.listByInvoice(invoice.id)).toHaveLength(2);
+  });
+});
+
+describe('ExportManager GST CSV', () => {
+  test('returns CSV data for filtered invoices when DOM is unavailable', () => {
+    const client = ClientManager.create({
+      name: 'GST Client',
+      businessName: 'GST Services',
+      address: '9 Export Way',
+      abn: '44 444 444 444',
+      contact: '0400000009',
+      prefix: 'GC',
+      email: 'gst@example.com'
+    });
+
+    const paidInvoice = InvoiceManager.create({
+      clientId: client.id,
+      issueDate: '2024-03-05',
+      dueDate: '2024-03-19',
+      lineItems: [
+        { description: 'On-site install', quantity: 2, unitPrice: 220, applyGst: true }
+      ]
+    });
+
+    InvoiceManager.markPaid(paidInvoice.id, '2024-03-20');
+
+    InvoiceManager.create({
+      clientId: client.id,
+      issueDate: '2024-04-02',
+      dueDate: '2024-04-16',
+      lineItems: [
+        { description: 'Follow-up support', quantity: 1, unitPrice: 110, applyGst: true }
+      ]
+    });
+
+    const exportResult = ExportManager.downloadGstCsv({
+      startDate: '2024-03-01',
+      endDate: '2024-03-31',
+      status: 'paid'
+    });
+
+    const settledInvoice = InvoiceManager.findById(paidInvoice.id);
+    expect(exportResult.rowCount).toBe(1);
+    expect(exportResult.filename).toBe('gst-export-20240301-to-20240331.csv');
+    const rows = exportResult.csv.trim().split('\n');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toContain('Invoice Number');
+    expect(rows[1]).toContain(settledInvoice.number);
+    expect(rows[1]).toContain(settledInvoice.gstTotal.toFixed(2));
+    expect(rows[1]).toContain('Paid');
+  });
+
+  test('validates export ranges before generating CSV', () => {
+    expect(() =>
+      ExportManager.downloadGstCsv({ startDate: '', endDate: '2024-03-10' })
+    ).toThrow(/start and end date/i);
+    expect(() =>
+      ExportManager.downloadGstCsv({ startDate: '2024-03-15', endDate: '2024-03-10' })
+    ).toThrow(/start date must be on or before the end date/i);
   });
 });
