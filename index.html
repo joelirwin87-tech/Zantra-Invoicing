@@ -181,20 +181,20 @@
               </article>
               <article class="card card--metric">
                 <header class="card__header">
-                  <h2 class="card__title">Upcoming Appointments</h2>
+                  <h2 class="card__title">Recurring Invoices Due Soon</h2>
                 </header>
                 <div class="card__body">
-                  <p class="metric__value" data-dashboard-value="upcomingAppointments">0</p>
-                  <p class="metric__meta">Scheduled site visits for the next 7 days.</p>
+                  <p class="metric__value" data-dashboard-value="upcomingRecurring">0 invoices</p>
+                  <p class="metric__meta">Scheduled renewals within the next 30 days.</p>
                 </div>
               </article>
               <article class="card card--metric">
                 <header class="card__header">
-                  <h2 class="card__title">Material Reorders</h2>
+                  <h2 class="card__title">Overdue Invoices</h2>
                 </header>
                 <div class="card__body">
-                  <p class="metric__value" data-dashboard-value="materialReorders">0</p>
-                  <p class="metric__meta">Jobs awaiting material replenishment.</p>
+                  <p class="metric__value" data-dashboard-value="overdueInvoices">0 invoices</p>
+                  <p class="metric__meta">Past-due balances awaiting payment.</p>
                 </div>
               </article>
             </div>
@@ -204,6 +204,14 @@
               </header>
               <div class="card__body">
                 <ul class="timeline" data-dashboard-outstanding aria-live="polite"></ul>
+              </div>
+            </article>
+            <article class="card card--elev">
+              <header class="card__header">
+                <h2 class="card__title">Recurring reminders</h2>
+              </header>
+              <div class="card__body">
+                <ul class="timeline" data-dashboard-recurring aria-live="polite"></ul>
               </div>
             </article>
           </section>
@@ -228,6 +236,10 @@
                 </button>
                 <button class="btn btn--primary btn--md" type="button" data-action="open-invoice-form">
                   Create invoice
+                </button>
+                <button class="btn btn--secondary btn--md" type="button" data-action="open-recurring-form">
+                  <span class="btn__icon" aria-hidden="true">⏱️</span>
+                  <span>New recurring schedule</span>
                 </button>
               </div>
             </header>
@@ -519,6 +531,153 @@
                           <th scope="col">Due</th>
                           <th scope="col" class="text-right">Total</th>
                           <th scope="col">Status</th>
+                          <th scope="col" class="text-right">Actions (print, email, edit)</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <form id="recurring-form" class="form card" data-form="recurring" hidden>
+              <input type="hidden" name="scheduleId" />
+              <div class="form-layout">
+                <div class="form-layout__main">
+                  <div class="row row--g16 form-row">
+                    <div class="field field--grow field--lg">
+                      <label for="recurring-name">Schedule name</label>
+                      <input id="recurring-name" type="text" name="name" placeholder="e.g. Monthly maintenance" required />
+                    </div>
+                    <div class="field field--grow field--lg">
+                      <label for="recurring-client">Client</label>
+                      <select id="recurring-client" name="clientId" required></select>
+                    </div>
+                  </div>
+
+                  <div class="row row--g16 form-row">
+                    <div class="field field--auto">
+                      <label for="recurring-start">Start date</label>
+                      <input id="recurring-start" type="date" name="startDate" required />
+                    </div>
+                    <div class="field field--auto">
+                      <label for="recurring-next">Next invoice date</label>
+                      <input id="recurring-next" type="date" name="nextRun" required />
+                    </div>
+                    <div class="field field--auto">
+                      <label for="recurring-frequency">Frequency</label>
+                      <select id="recurring-frequency" name="frequency" required></select>
+                    </div>
+                    <div class="field field--auto">
+                      <label for="recurring-due-days">Due in (days)</label>
+                      <input
+                        id="recurring-due-days"
+                        type="number"
+                        name="dueDays"
+                        min="1"
+                        max="90"
+                        step="1"
+                        value="14"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div class="card card--subtle">
+                    <header class="card__header">
+                      <h2 class="card__title">Line items</h2>
+                    </header>
+                    <div class="card__body">
+                      <div class="table table--line-items">
+                        <div class="table__container">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th scope="col">Service</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">Qty</th>
+                                <th scope="col">Unit price</th>
+                                <th scope="col">GST</th>
+                                <th scope="col" class="text-right">Row total</th>
+                                <th scope="col" class="sr-only">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody data-line-items-body></tbody>
+                          </table>
+                        </div>
+                        <div class="table__footer">
+                          <button
+                            class="btn btn--secondary btn--md btn--full"
+                            type="button"
+                            data-action="add-line"
+                          >
+                            Add line item
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="field field--stack">
+                    <label for="recurring-notes">Notes</label>
+                    <textarea
+                      id="recurring-notes"
+                      name="notes"
+                      rows="3"
+                      placeholder="Default notes applied to generated invoices"
+                    ></textarea>
+                  </div>
+                </div>
+                <aside class="form-layout__aside">
+                  <div class="totals card card--elev" aria-live="polite">
+                    <header class="card__header">
+                      <h2 class="card__title">Estimated totals</h2>
+                    </header>
+                    <div class="card__body">
+                      <dl class="totals__list">
+                        <div class="totals__row">
+                          <dt>Subtotal</dt>
+                          <dd data-recurring-total="subtotal">$0.00</dd>
+                        </div>
+                        <div class="totals__row">
+                          <dt>GST</dt>
+                          <dd data-recurring-total="gst">$0.00</dd>
+                        </div>
+                        <div class="totals__row totals__row--grand">
+                          <dt>Total</dt>
+                          <dd data-recurring-total="total">$0.00</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+              <p class="form-feedback" data-feedback role="alert"></p>
+              <div class="form-actions">
+                <button class="btn btn--primary btn--lg save-recurring-btn" type="submit">
+                  Save schedule
+                </button>
+                <button class="btn btn--secondary btn--lg" type="button" data-action="cancel">
+                  Cancel
+                </button>
+              </div>
+            </form>
+            <div class="card card--table" data-table="recurring" role="region" aria-live="polite">
+              <header class="card__header card__header--toolbar">
+                <h2 class="card__title">Recurring schedules</h2>
+              </header>
+              <div class="card__body">
+                <div class="table">
+                  <div class="table__container">
+                    <table>
+                      <caption class="sr-only">List of recurring invoice schedules</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Schedule</th>
+                          <th scope="col">Client</th>
+                          <th scope="col">Frequency</th>
+                          <th scope="col">Next run</th>
+                          <th scope="col">Last run</th>
                           <th scope="col" class="text-right">Actions</th>
                         </tr>
                       </thead>
@@ -1013,6 +1172,37 @@
                   </dl>
                 </section>
               </div>
+              <section class="card report-export">
+                <header class="card__header">
+                  <h2>GST CSV Export</h2>
+                  <p>Download paid invoices with GST totals for your selected period.</p>
+                </header>
+                <form class="card__body" data-gst-export-form novalidate>
+                  <div class="form-grid">
+                    <label class="form-field">
+                      <span>Start date</span>
+                      <input type="date" name="gstExportStart" data-gst-export-start />
+                    </label>
+                    <label class="form-field">
+                      <span>End date</span>
+                      <input type="date" name="gstExportEnd" data-gst-export-end />
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn--primary btn--md" data-action="download-gst-csv">
+                      <span class="btn__icon" aria-hidden="true">⬇️</span>
+                      <span>Download GST CSV</span>
+                    </button>
+                  </div>
+                  <p
+                    class="form-feedback"
+                    data-feedback
+                    data-gst-export-feedback
+                    role="status"
+                    aria-live="polite"
+                  ></p>
+                </form>
+              </section>
             </div>
           </section>
 
@@ -1075,6 +1265,20 @@
                 <button class="btn btn--primary btn--lg save-settings-btn" type="submit">Save settings</button>
               </div>
             </form>
+            <section class="card settings-backup-card" aria-labelledby="settings-backup-title">
+              <header class="card__header">
+                <h2 id="settings-backup-title" class="card__title">Backup &amp; restore</h2>
+                <p class="card__subtitle">Download a full JSON backup or restore your invoicing data.</p>
+              </header>
+              <div class="card__body">
+                <div class="settings-backup-card__actions">
+                  <button type="button" class="btn btn--secondary btn--md" data-action="export-backup">Export backup</button>
+                  <button type="button" class="btn btn--ghost btn--md" data-action="restore-backup">Restore backup</button>
+                  <input type="file" accept="application/json" data-backup-input hidden />
+                </div>
+                <p class="settings-backup-card__status" role="status" aria-live="polite" data-backup-feedback></p>
+              </div>
+            </section>
           </section>
     </div>
   </main>

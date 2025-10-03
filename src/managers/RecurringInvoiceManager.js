@@ -4,100 +4,97 @@ import { InvoiceManager } from './InvoiceManager.js';
 
 const sanitizeString = (value) => (typeof value === 'string' ? value.trim() : '');
 
-const sanitizeNumber = (value, { min = 0, max = Number.POSITIVE_INFINITY, fallback = 0 } = {}) => {
+const sanitizeNumber = (value) => {
   const numeric = Number.parseFloat(value);
   if (Number.isNaN(numeric) || !Number.isFinite(numeric)) {
-    return fallback;
+    return 0;
   }
-  const clamped = Math.min(Math.max(numeric, min), max);
-  return Math.round(clamped * 100) / 100;
+  return Math.max(0, Math.round(numeric * 100) / 100);
 };
 
-const sanitizeInteger = (value, { min = 0, max = Number.POSITIVE_INFINITY, fallback = 0 } = {}) => {
-  const numeric = Number.parseInt(value, 10);
-  if (Number.isNaN(numeric) || !Number.isFinite(numeric)) {
-    return fallback;
-  }
-  const clamped = Math.min(Math.max(numeric, min), max);
-  return clamped;
-};
-
-const toDate = (value) => {
-  if (!value) {
+const toDateAtStartOfDay = (input) => {
+  if (!input) {
     return null;
   }
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : new Date(value.getTime());
+  const date = input instanceof Date ? new Date(input.getTime()) : new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return null;
   }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-    const parsed = Date.parse(trimmed);
-    if (Number.isNaN(parsed)) {
-      return null;
-    }
-    const date = new Date(parsed);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
-const coerceDate = (value, fallback) => {
-  const resolved = toDate(value) || toDate(fallback) || new Date();
-  return resolved.toISOString();
+const toIsoDate = (input, fallback) => {
+  const date = toDateAtStartOfDay(input) || (fallback ? toDateAtStartOfDay(fallback) : null);
+  return date ? date.toISOString() : '';
 };
-
-const coerceDateOptional = (value) => {
-  const resolved = toDate(value);
-  return resolved ? resolved.toISOString() : '';
-};
-
-const withTwoDecimals = (value) => Math.round(value * 100) / 100;
 
 const addDays = (date, days) => {
-  const base = toDate(date) || new Date();
-  const result = new Date(base.getTime());
-  result.setDate(result.getDate() + days);
-  return result;
+  const next = new Date(date.getTime());
+  next.setDate(next.getDate() + days);
+  return next;
 };
 
 const addMonths = (date, months) => {
-  const base = toDate(date) || new Date();
-  const result = new Date(base.getTime());
-  const day = result.getDate();
-  result.setDate(1);
-  result.setMonth(result.getMonth() + months);
-  const maxDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
-  result.setDate(Math.min(day, maxDay));
-  return result;
+  const next = new Date(date.getTime());
+  const originalDate = next.getDate();
+  next.setMonth(next.getMonth() + months);
+  if (next.getDate() < originalDate) {
+    next.setDate(0);
+  }
+  return next;
 };
 
-const clone = (value) => (value === null || value === undefined ? value : JSON.parse(JSON.stringify(value)));
+const FREQUENCIES = Object.freeze({
+  weekly: {
+    value: 'weekly',
+    label: 'Weekly',
+    add: (date) => addDays(date, 7)
+  },
+  fortnightly: {
+    value: 'fortnightly',
+    label: 'Fortnightly',
+    add: (date) => addDays(date, 14)
+  },
+  monthly: {
+    value: 'monthly',
+    label: 'Monthly',
+    add: (date) => addMonths(date, 1)
+  },
+  quarterly: {
+    value: 'quarterly',
+    label: 'Quarterly',
+    add: (date) => addMonths(date, 3)
+  },
+  annually: {
+    value: 'annually',
+    label: 'Annually',
+    add: (date) => addMonths(date, 12)
+  }
+});
 
-const MS_IN_DAY = 24 * 60 * 60 * 1000;
-
-const FREQUENCY_RULES = {
-  weekly: { label: 'Weekly', type: 'days', value: 7 },
-  fortnightly: { label: 'Fortnightly', type: 'days', value: 14 },
-  monthly: { label: 'Monthly', type: 'months', value: 1 },
-  quarterly: { label: 'Quarterly', type: 'months', value: 3 },
-  yearly: { label: 'Yearly', type: 'months', value: 12 },
-  custom: { label: 'Custom', type: 'days', value: null }
-};
-
-const calculateTotals = (lineItems, gstRate) => InvoiceManager.calculateTotals(lineItems, gstRate);
+const MAX_SCHEDULE_ADVANCE = 48;
 
 export class RecurringInvoiceManager {
+  static FREQUENCIES = FREQUENCIES;
+
   static list() {
-    return DataManager.listRecurringSchedules().map((schedule) =>
-      RecurringInvoiceManager.#normalize(schedule, { preserveTimestamps: true })
-    );
+    return DataManager.listRecurringSchedules()
+      .map((record) => RecurringInvoiceManager.#normalize(record, { allowMissingClient: true, preserveCreatedAt: true }))
+      .sort((a, b) => {
+        const aTime = a.nextRun ? Date.parse(a.nextRun) : Number.POSITIVE_INFINITY;
+        const bTime = b.nextRun ? Date.parse(b.nextRun) : Number.POSITIVE_INFINITY;
+        if (Number.isNaN(aTime) && Number.isNaN(bTime)) {
+          return sanitizeString(a.name).localeCompare(sanitizeString(b.name));
+        }
+        if (Number.isNaN(aTime)) {
+          return 1;
+        }
+        if (Number.isNaN(bTime)) {
+          return -1;
+        }
+        return aTime - bTime;
+      });
   }
 
   static findById(scheduleId) {
@@ -106,6 +103,10 @@ export class RecurringInvoiceManager {
       return null;
     }
     return RecurringInvoiceManager.list().find((schedule) => schedule.id === id) || null;
+  }
+
+  static getFrequencyOptions() {
+    return Object.values(FREQUENCIES).map(({ value, label }) => ({ value, label }));
   }
 
   static create(input) {
@@ -117,30 +118,25 @@ export class RecurringInvoiceManager {
         createdAt: now,
         updatedAt: now
       },
-      { forceUpdatedAt: now }
+      { allowMissingClient: false, preserveCreatedAt: false }
     );
     return DataManager.saveRecurringSchedule(normalized);
   }
 
   static update(scheduleId, updates) {
-    const id = sanitizeString(scheduleId);
-    if (!id) {
-      throw new Error('RecurringInvoiceManager.update: scheduleId is required.');
-    }
-    const existing = RecurringInvoiceManager.findById(id);
+    const existing = RecurringInvoiceManager.findById(scheduleId);
     if (!existing) {
-      throw new Error(`RecurringInvoiceManager.update: No schedule found for id "${id}".`);
+      throw new Error(`RecurringInvoiceManager.update: No schedule found for id "${scheduleId}".`);
     }
-    const now = DataManager.now();
     const normalized = RecurringInvoiceManager.#normalize(
       {
         ...existing,
         ...updates,
         id: existing.id,
         createdAt: existing.createdAt,
-        updatedAt: now
+        updatedAt: DataManager.now()
       },
-      { forceUpdatedAt: now }
+      { allowMissingClient: false, preserveCreatedAt: true }
     );
     return DataManager.saveRecurringSchedule(normalized);
   }
@@ -149,195 +145,89 @@ export class RecurringInvoiceManager {
     return DataManager.deleteRecurringSchedule(scheduleId);
   }
 
-  static runNow(scheduleOrId, options = {}) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
-    if (!schedule) {
-      throw new Error('RecurringInvoiceManager.runNow: schedule not found.');
-    }
-    const issueDateIso = coerceDate(options.issueDate, schedule.nextRunDate || DataManager.now());
-    const invoice = RecurringInvoiceManager.generateInvoice(schedule, { issueDate: issueDateIso });
-    const updatedSchedule = RecurringInvoiceManager.advanceSchedule(schedule, {
-      runDate: issueDateIso,
-      resetReminder: true
-    });
-    return { invoice, schedule: updatedSchedule };
-  }
-
-  static generateInvoice(scheduleOrId, options = {}) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
-    if (!schedule) {
-      throw new Error('RecurringInvoiceManager.generateInvoice: schedule not found.');
-    }
-    const issueDateIso = coerceDate(options.issueDate, schedule.nextRunDate || DataManager.now());
-    const dueDateIso = options.dueDate
-      ? coerceDate(options.dueDate, issueDateIso)
-      : RecurringInvoiceManager.calculateDueDate(issueDateIso, schedule.paymentTermsDays);
-    const invoicePayload = {
-      clientId: schedule.clientId,
-      issueDate: issueDateIso,
-      dueDate: dueDateIso,
-      notes: schedule.notes,
-      lineItems: schedule.lineItems.map((item) => ({
-        serviceId: item.serviceId,
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        applyGst: item.applyGst
-      })),
-      status: 'unpaid',
-      type: 'invoice'
-    };
-    const createdInvoice = InvoiceManager.create(invoicePayload);
-    return DataManager.saveInvoice({ ...createdInvoice, type: 'invoice' });
-  }
-
-  static advanceSchedule(scheduleOrId, options = {}) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
-    if (!schedule) {
-      throw new Error('RecurringInvoiceManager.advanceSchedule: schedule not found.');
-    }
-    const runDateIso = coerceDate(options.runDate, schedule.nextRunDate || DataManager.now());
-    const runDate = toDate(runDateIso) || new Date();
-    const nextRunDate = RecurringInvoiceManager.calculateNextRunDate(schedule, runDate);
-    const updates = {
-      lastRunAt: runDate.toISOString(),
-      nextRunDate,
-      updatedAt: DataManager.now()
-    };
-    if (options.resetReminder !== false) {
-      updates.lastReminderAt = '';
-    }
-    return RecurringInvoiceManager.update(schedule.id, updates);
-  }
-
-  static recordReminderSent(scheduleOrId, reminderDate) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
-    if (!schedule) {
-      throw new Error('RecurringInvoiceManager.recordReminderSent: schedule not found.');
-    }
-    const reminderIso = coerceDate(reminderDate, DataManager.now());
-    return RecurringInvoiceManager.update(schedule.id, {
-      lastReminderAt: reminderIso
-    });
-  }
-
-  static calculateNextRunDate(scheduleOrId, referenceDate) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
-    if (!schedule) {
-      throw new Error('RecurringInvoiceManager.calculateNextRunDate: schedule not found.');
-    }
-    const reference = toDate(referenceDate) || toDate(schedule.nextRunDate) || new Date();
-    if (!reference) {
-      return schedule.nextRunDate || DataManager.now();
-    }
-    let next;
-    if (schedule.intervalMonths && schedule.intervalMonths > 0) {
-      next = addMonths(reference, schedule.intervalMonths);
-    } else {
-      const intervalDays = schedule.intervalDays && schedule.intervalDays > 0 ? schedule.intervalDays : 30;
-      next = addDays(reference, intervalDays);
-    }
-    return next.toISOString();
-  }
-
-  static calculateDueDate(issueDateIso, paymentTermsDays = 14) {
-    const terms = sanitizeInteger(paymentTermsDays, { min: 1, max: 120, fallback: 14 });
-    const issueDate = toDate(issueDateIso) || new Date();
-    return addDays(issueDate, terms).toISOString();
-  }
-
-  static daysUntilNextRun(scheduleOrId, referenceDate = new Date()) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
+  static runSchedule(scheduleId, referenceDate = new Date()) {
+    const schedule = RecurringInvoiceManager.findById(scheduleId);
     if (!schedule) {
       return null;
     }
-    const nextRun = toDate(schedule.nextRunDate);
-    const reference = toDate(referenceDate);
-    if (!nextRun || !reference) {
+    const runDateIso = schedule.nextRun || toIsoDate(referenceDate, DataManager.now());
+    const runDate = toDateAtStartOfDay(runDateIso) || new Date();
+    const executionDate = toDateAtStartOfDay(referenceDate) || runDate;
+
+    if (!schedule.lineItems?.length) {
+      console.warn(`RecurringInvoiceManager.runSchedule: Schedule "${scheduleId}" has no line items.`);
       return null;
     }
-    const diff = nextRun.getTime() - reference.getTime();
-    return Math.floor(diff / MS_IN_DAY);
+
+    try {
+      const dueDays = Number.isFinite(schedule.dueDays) ? schedule.dueDays : 14;
+      const dueDate = addDays(runDate, Math.max(1, dueDays));
+      const invoicePayload = {
+        clientId: schedule.clientId,
+        issueDate: runDate.toISOString(),
+        dueDate: dueDate.toISOString(),
+        notes: schedule.notes,
+        lineItems: schedule.lineItems.map((item) => ({
+          serviceId: item.serviceId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          applyGst: item.applyGst
+        })),
+        status: 'unpaid',
+        type: 'invoice'
+      };
+
+      const createdInvoice = InvoiceManager.create(invoicePayload);
+      DataManager.saveInvoice({ ...createdInvoice, type: 'invoice' });
+
+      const updatedSchedule = RecurringInvoiceManager.#recordRun(
+        schedule,
+        runDate.toISOString(),
+        executionDate.toISOString()
+      );
+
+      return { invoice: createdInvoice, schedule: updatedSchedule };
+    } catch (error) {
+      console.error('RecurringInvoiceManager.runSchedule failed:', error);
+      return null;
+    }
   }
 
-  static isOverdue(scheduleOrId, referenceDate = new Date()) {
-    const days = RecurringInvoiceManager.daysUntilNextRun(scheduleOrId, referenceDate);
-    return typeof days === 'number' ? days < 0 : false;
-  }
-
-  static needsReminder(scheduleOrId, referenceDate = new Date()) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
-    if (!schedule) {
-      return false;
-    }
-    const leadDays = sanitizeInteger(schedule.reminderLeadDays, { min: 0, max: 365, fallback: 0 });
-    if (leadDays <= 0) {
-      return false;
-    }
-    const nextRun = toDate(schedule.nextRunDate);
-    const reference = toDate(referenceDate);
-    if (!nextRun || !reference) {
-      return false;
-    }
-    const msUntil = nextRun.getTime() - reference.getTime();
-    if (msUntil < 0) {
-      return false;
-    }
-    if (msUntil > leadDays * MS_IN_DAY) {
-      return false;
-    }
-    if (!schedule.lastReminderAt) {
-      return true;
-    }
-    const lastReminder = toDate(schedule.lastReminderAt);
-    if (!lastReminder) {
-      return true;
-    }
-    const reminderWindowStart = addDays(nextRun, -leadDays);
-    return lastReminder.getTime() < reminderWindowStart.getTime();
-  }
-
-  static describeFrequency(scheduleOrId) {
-    const schedule = RecurringInvoiceManager.#resolveSchedule(scheduleOrId);
-    if (!schedule) {
-      return '';
-    }
-    const key = sanitizeString(schedule.frequency).toLowerCase();
-    const rule = FREQUENCY_RULES[key];
-    if (!rule) {
-      const days = sanitizeInteger(schedule.intervalDays, { min: 1, max: 365, fallback: 30 });
-      return `Every ${days} days`;
-    }
-    if (key === 'custom') {
-      const days = sanitizeInteger(schedule.intervalDays, { min: 1, max: 365, fallback: 30 });
-      return `Every ${days} days`;
-    }
-    if (rule.type === 'months' && schedule.intervalMonths && schedule.intervalMonths > 1) {
-      if (schedule.intervalMonths === 12) {
-        return 'Yearly';
+  static executeDueSchedules(referenceDate = new Date()) {
+    const now = toDateAtStartOfDay(referenceDate) || new Date();
+    const schedules = RecurringInvoiceManager.list();
+    const dueSchedules = schedules.filter((schedule) => {
+      if (!schedule.nextRun) {
+        return false;
       }
-      return `Every ${schedule.intervalMonths} months`;
-    }
-    if (rule.type === 'months') {
-      return rule.label;
-    }
-    if (rule.type === 'days' && rule.value && rule.value > 1) {
-      return rule.label;
-    }
-    if (rule.type === 'days' && (!rule.value || rule.value === 1)) {
-      return 'Daily';
-    }
-    return rule.label;
+      const nextRunDate = toDateAtStartOfDay(schedule.nextRun);
+      return nextRunDate && nextRunDate.getTime() <= now.getTime();
+    });
+
+    const results = [];
+    dueSchedules.forEach((schedule) => {
+      const outcome = RecurringInvoiceManager.runSchedule(schedule.id, now);
+      if (outcome) {
+        results.push(outcome);
+      }
+    });
+    return results;
   }
 
-  static #resolveSchedule(scheduleOrId) {
-    if (scheduleOrId && typeof scheduleOrId === 'object') {
-      return scheduleOrId;
-    }
-    if (typeof scheduleOrId === 'string') {
-      return RecurringInvoiceManager.findById(scheduleOrId);
-    }
-    return null;
+  static getUpcomingSchedules(referenceDate = new Date(), windowDays = 30) {
+    const start = toDateAtStartOfDay(referenceDate) || new Date();
+    const end = addDays(start, Math.max(1, windowDays));
+    return RecurringInvoiceManager.list().filter((schedule) => {
+      if (!schedule.nextRun) {
+        return false;
+      }
+      const nextRunDate = toDateAtStartOfDay(schedule.nextRun);
+      if (!nextRunDate) {
+        return false;
+      }
+      return nextRunDate.getTime() >= start.getTime() && nextRunDate.getTime() <= end.getTime();
+    });
   }
 
   static #normalize(input, options = {}) {
@@ -345,137 +235,120 @@ export class RecurringInvoiceManager {
       throw new Error('RecurringInvoiceManager: schedule payload must be an object.');
     }
 
-    const { preserveTimestamps = false, forceUpdatedAt } = options;
+    const { allowMissingClient = false, preserveCreatedAt = true } = options;
 
-    const name = sanitizeString(input.name);
-    if (!name) {
-      throw new Error('RecurringInvoiceManager: schedule name is required.');
+    const client = RecurringInvoiceManager.#resolveClient(input, { allowMissing: allowMissingClient });
+    if (!client && !allowMissingClient) {
+      throw new Error('RecurringInvoiceManager: a valid client is required.');
     }
 
-    const clientId = sanitizeString(input.clientId);
-    if (!clientId) {
-      throw new Error('RecurringInvoiceManager: clientId is required.');
-    }
+    const frequencyKey = RecurringInvoiceManager.#resolveFrequency(input.frequency);
+    const frequency = FREQUENCIES[frequencyKey] ?? FREQUENCIES.monthly;
 
-    const client = ClientManager.findById(clientId);
-    if (!client) {
-      throw new Error(`RecurringInvoiceManager: Unable to locate client for id "${clientId}".`);
-    }
+    const startDateIso = toIsoDate(input.startDate, DataManager.now());
+    const nextRunIso = toIsoDate(input.nextRun || startDateIso || DataManager.now(), startDateIso || DataManager.now());
+    const lastRunIso = toIsoDate(input.lastRun);
 
-    const frequencyKey = sanitizeString(input.frequency).toLowerCase() || 'monthly';
-    const frequency = FREQUENCY_RULES[frequencyKey] ? frequencyKey : 'monthly';
-    const intervalDaysInput = input.intervalDays ?? FREQUENCY_RULES[frequency]?.value ?? 30;
-    const intervalDays =
-      frequency === 'monthly' || frequency === 'quarterly' || frequency === 'yearly'
-        ? 0
-        : sanitizeInteger(intervalDaysInput, { min: 1, max: 365, fallback: FREQUENCY_RULES[frequency]?.value ?? 30 });
-    const intervalMonths =
-      frequency === 'monthly'
-        ? 1
-        : frequency === 'quarterly'
-        ? 3
-        : frequency === 'yearly'
-        ? 12
-        : 0;
-
-    const paymentTermsDays = sanitizeInteger(input.paymentTermsDays ?? input.paymentTerms, {
-      min: 1,
-      max: 180,
-      fallback: 14
-    });
-    const reminderLeadDays = sanitizeInteger(input.reminderLeadDays ?? input.reminderLead, {
-      min: 0,
-      max: 60,
-      fallback: 0
-    });
-    const requiresMaterials = Boolean(input.requiresMaterials);
-
-    const nextRunDate = coerceDate(input.nextRunDate ?? input.startDate ?? input.firstRunAt, DataManager.now());
-    const lastRunAt = coerceDateOptional(input.lastRunAt ?? input.previousRunAt);
-    const lastReminderAt = coerceDateOptional(input.lastReminderAt ?? input.previousReminderAt);
-
-    const settings = DataManager.getSettings();
-    const lineItems = RecurringInvoiceManager.#normalizeLineItems(input.lineItems, settings);
+    const lineItems = RecurringInvoiceManager.#normalizeLineItems(input.lineItems);
     if (!lineItems.length) {
       throw new Error('RecurringInvoiceManager: at least one line item is required.');
     }
 
-    const totals = calculateTotals(
-      lineItems.map((item) => ({
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        applyGst: item.applyGst
-      })),
-      settings.gstRate
-    );
-
+    const dueDaysValue = Math.max(1, Math.min(90, Math.round(Number.parseInt(input.dueDays ?? 14, 10)) || 14));
     const nowIso = DataManager.now();
-    const createdAt = sanitizeString(input.createdAt) || nowIso;
-    let updatedAt = sanitizeString(forceUpdatedAt || input.updatedAt);
-    if (!updatedAt || !preserveTimestamps) {
-      updatedAt = forceUpdatedAt ? sanitizeString(forceUpdatedAt) || nowIso : nowIso;
-    }
 
     return {
       id: sanitizeString(input.id) || DataManager.randomUUID(),
-      name,
-      clientId: client.id,
-      clientName: client.name,
-      clientBusinessName: client.businessName,
-      frequency,
-      intervalDays,
-      intervalMonths,
-      paymentTermsDays,
-      reminderLeadDays,
-      requiresMaterials,
-      nextRunDate,
-      lastRunAt,
-      lastReminderAt,
+      name: sanitizeString(input.name) || 'Recurring invoice',
+      description: sanitizeString(input.description),
+      clientId: client?.id || sanitizeString(input.clientId),
+      clientName: client?.name || sanitizeString(input.clientName),
+      clientBusinessName: client?.businessName || sanitizeString(input.clientBusinessName),
+      frequency: frequency.value,
+      frequencyLabel: frequency.label,
+      dueDays: dueDaysValue,
+      startDate: startDateIso,
+      nextRun: nextRunIso,
+      lastRun: lastRunIso,
       notes: sanitizeString(input.notes),
       lineItems,
-      subtotal: withTwoDecimals(totals.subtotal),
-      gstTotal: withTwoDecimals(totals.gstTotal),
-      total: withTwoDecimals(totals.total),
-      createdAt,
-      updatedAt
+      createdAt: preserveCreatedAt ? sanitizeString(input.createdAt) || nowIso : nowIso,
+      updatedAt: sanitizeString(input.updatedAt) || nowIso
     };
   }
 
-  static #normalizeLineItems(lineItems, settings) {
-    if (!Array.isArray(lineItems)) {
+  static #resolveClient(input, { allowMissing }) {
+    const clientId = sanitizeString(input.clientId || input.client?.id);
+    if (!clientId) {
+      return null;
+    }
+    const client = ClientManager.findById(clientId);
+    if (!client && allowMissing) {
+      return {
+        id: clientId,
+        name: sanitizeString(input.clientName) || 'Unknown client',
+        businessName: sanitizeString(input.clientBusinessName)
+      };
+    }
+    return client;
+  }
+
+  static #resolveFrequency(raw) {
+    const value = sanitizeString(raw).toLowerCase();
+    if (value && FREQUENCIES[value]) {
+      return value;
+    }
+    return FREQUENCIES.monthly.value;
+  }
+
+  static #normalizeLineItems(items) {
+    if (!Array.isArray(items)) {
       return [];
     }
-    const resolvedSettings = settings && typeof settings === 'object' ? settings : DataManager.getSettings();
-    const gstRateValue = typeof resolvedSettings.gstRate === 'number' ? resolvedSettings.gstRate : 0;
-    return lineItems
+    return items
       .map((item) => {
         if (!item || typeof item !== 'object') {
           return null;
         }
         const description = sanitizeString(item.description);
-        const quantity = sanitizeNumber(item.quantity || 0, { min: 0, fallback: 0 });
-        const unitPrice = sanitizeNumber(item.unitPrice || 0, { min: 0, fallback: 0 });
+        const quantity = sanitizeNumber(item.quantity || 0);
+        const unitPrice = sanitizeNumber(item.unitPrice || 0);
         if (!description || quantity <= 0) {
           return null;
         }
-        const applyGst = Boolean(item.applyGst);
-        const subtotal = withTwoDecimals(quantity * unitPrice);
-        const gst = withTwoDecimals(subtotal * (applyGst ? gstRateValue : 0));
-        const total = withTwoDecimals(subtotal + gst);
         return {
           id: sanitizeString(item.id) || DataManager.randomUUID(),
           serviceId: sanitizeString(item.serviceId),
           description,
           quantity,
           unitPrice,
-          applyGst,
-          subtotal,
-          gst,
-          total
+          applyGst: Boolean(item.applyGst)
         };
       })
-      .filter(Boolean)
-      .map((item) => clone(item));
+      .filter(Boolean);
+  }
+
+  static #recordRun(schedule, runDateIso, referenceDateIso) {
+    const runDate = toDateAtStartOfDay(runDateIso);
+    if (!runDate) {
+      return schedule;
+    }
+    const referenceDate = toDateAtStartOfDay(referenceDateIso) || runDate;
+    const frequency = FREQUENCIES[schedule.frequency] ?? FREQUENCIES.monthly;
+    let nextRunDate = frequency.add(runDate);
+    let iterations = 0;
+    while (nextRunDate.getTime() <= referenceDate.getTime() && iterations < MAX_SCHEDULE_ADVANCE) {
+      nextRunDate = frequency.add(nextRunDate);
+      iterations += 1;
+    }
+    const normalized = {
+      ...schedule,
+      lastRun: runDate.toISOString(),
+      nextRun: nextRunDate.toISOString(),
+      updatedAt: DataManager.now()
+    };
+    return DataManager.saveRecurringSchedule(normalized);
   }
 }
+
+export default RecurringInvoiceManager;
