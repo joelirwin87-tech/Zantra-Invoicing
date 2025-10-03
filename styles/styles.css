@@ -828,6 +828,12 @@ textarea {
   margin-inline-start: 0;
 }
 
+.table-actions__message {
+  margin-top: var(--space-2);
+  text-align: right;
+  color: #ff94a6;
+}
+
 .toolbar {
   display: flex;
   align-items: center;

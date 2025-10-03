@@ -10,6 +10,7 @@ import { DataManager } from './data/DataManager.js';
 import { ClientManager } from './managers/ClientManager.js';
 import { ServiceManager } from './managers/ServiceManager.js';
 import { InvoiceManager } from './managers/InvoiceManager.js';
+import { InvoiceDocumentManager } from './managers/InvoiceDocumentManager.js';
 import { QuoteManager } from './managers/QuoteManager.js';
 import { PaymentManager } from './managers/PaymentManager.js';
 import { ReportManager } from './managers/ReportManager.js';
@@ -766,6 +767,8 @@ class ZantraApp {
               ? `<div class="status-meta">Balance ${formatCurrency(invoice.balanceDue ?? invoice.total)}</div>`
               : '';
           const actions = [
+            `<button class="btn btn--sm btn--ghost" data-action="print" data-id="${invoice.id}">Print</button>`,
+            `<button class="btn btn--sm btn--secondary" data-action="email" data-id="${invoice.id}">Email</button>`,
             `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${invoice.id}">Edit</button>`,
             (invoice.balanceDue ?? invoice.total) > 0
               ? `<button class="btn btn--sm btn--primary" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
@@ -787,10 +790,25 @@ class ZantraApp {
             <td>${statusMarkup}${paidMeta}${balanceMeta}</td>
             <td class="text-right">
               <div class="table-actions">${actions}</div>
+              <p class="table-actions__message error" data-role="actions-message" role="status" aria-live="polite" hidden></p>
             </td>
           `;
           this.invoiceListBody.appendChild(row);
         });
+
+      const getMessageElement = (button) =>
+        button.closest('td')?.querySelector('[data-role="actions-message"]') ?? null;
+      const showMessage = (element, message) => {
+        if (!element) {
+          return;
+        }
+        element.textContent = message;
+        if (message) {
+          element.removeAttribute('hidden');
+        } else {
+          element.setAttribute('hidden', '');
+        }
+      };
 
       this.invoiceListBody.querySelectorAll('[data-action="mark-paid"]').forEach((button) => {
         button.addEventListener('click', (event) => {
@@ -808,8 +826,60 @@ class ZantraApp {
             PaymentManager.recordPayment(invoiceId, amountDue, new Date());
             this.refreshData();
             this.renderAll();
+            showMessage(getMessageElement(button), '');
           } catch (error) {
             console.error(error);
+          }
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="print"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          const messageElement = getMessageElement(button);
+          showMessage(messageElement, '');
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (!invoice) {
+            showMessage(messageElement, 'Invoice could not be found.');
+            return;
+          }
+          try {
+            const client = ClientManager.findById(invoice.clientId) || null;
+            InvoiceDocumentManager.printInvoice(invoice, client, this.state.settings);
+          } catch (error) {
+            console.error(error);
+            showMessage(messageElement, 'Unable to open print preview. Check your pop-up settings.');
+          }
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="email"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          const messageElement = getMessageElement(button);
+          showMessage(messageElement, '');
+          const invoice = this.state.invoices.find((item) => item.id === invoiceId);
+          if (!invoice) {
+            showMessage(messageElement, 'Invoice could not be found.');
+            return;
+          }
+          const client = ClientManager.findById(invoice.clientId);
+          if (!client) {
+            showMessage(messageElement, 'Client record is missing. Update the client list and try again.');
+            return;
+          }
+          if (!client.email) {
+            const displayName = client.businessName || client.name || 'this client';
+            showMessage(messageElement, `Add an email address for ${displayName} to send invoices.`);
+            return;
+          }
+          try {
+            InvoiceDocumentManager.emailInvoice(invoice, client, this.state.settings);
+          } catch (error) {
+            console.error(error);
+            showMessage(messageElement, 'Unable to open your email client.');
           }
         });
       });
@@ -1601,6 +1671,7 @@ class ZantraApp {
         ClientManager,
         ServiceManager,
         InvoiceManager,
+        InvoiceDocumentManager,
         QuoteManager,
         PaymentManager,
         ReportManager,
@@ -1620,6 +1691,7 @@ export {
   ClientManager,
   ServiceManager,
   InvoiceManager,
+  InvoiceDocumentManager,
   QuoteManager,
   PaymentManager,
   ReportManager,
