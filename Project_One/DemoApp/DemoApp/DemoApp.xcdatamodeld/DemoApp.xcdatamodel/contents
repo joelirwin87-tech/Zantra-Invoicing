@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="" timeStamp="2024-01-01 00:00:00 +0000">
+    <entity name="InvoiceEntity" representedClassName="InvoiceEntity" syncable="YES">
+        <attribute name="id" optional="NO" attributeType="UUIDAttributeType" usesScalarValueType="NO"/>
+        <attribute name="clientName" optional="YES" attributeType="String"/>
+        <attribute name="issueDate" optional="YES" attributeType="Date"/>
+        <attribute name="dueDate" optional="YES" attributeType="Date"/>
+        <attribute name="total" optional="YES" attributeType="Decimal"/>
+        <attribute name="status" optional="YES" attributeType="String"/>
+    </entity>
+    <elements>
+        <element name="InvoiceEntity" positionX="0" positionY="0" width="128" height="96"/>
+    </elements>
+</model>
