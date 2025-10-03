@@ -13,6 +13,7 @@ import { InvoiceManager } from './managers/InvoiceManager.js';
 import { QuoteManager } from './managers/QuoteManager.js';
 import { PaymentManager } from './managers/PaymentManager.js';
 import { ReportManager } from './managers/ReportManager.js';
+import { ExportManager } from './managers/ExportManager.js';
 import { SettingsManager } from './managers/SettingsManager.js';
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
@@ -283,8 +284,10 @@ class ZantraApp {
     this.clientFormInitialized = false;
     this.serviceFormInitialized = false;
     this.settingsFormInitialized = false;
+    this.gstExportInitialized = false;
     this.toastDismissTimeout = null;
     this.handleQuoteListClick = this.handleQuoteListClick.bind(this);
+    this.handleGstExportDownload = this.handleGstExportDownload.bind(this);
   }
 
   init() {
@@ -336,6 +339,11 @@ class ZantraApp {
 
     this.settingsForm = document.querySelector('#settings-form');
     this.reportCanvas = document.getElementById('reports-chart');
+    this.gstExportForm = document.querySelector('[data-gst-export-form]');
+    this.gstExportStartInput = this.gstExportForm?.querySelector('[data-gst-export-start]') ?? null;
+    this.gstExportEndInput = this.gstExportForm?.querySelector('[data-gst-export-end]') ?? null;
+    this.gstExportFeedback = this.gstExportForm?.querySelector('[data-gst-export-feedback]') ?? null;
+    this.gstExportButton = this.gstExportForm?.querySelector('[data-action="download-gst-csv"]') ?? null;
 
     this.toastRegion = document.querySelector('[data-toast-region]');
 
@@ -1540,6 +1548,66 @@ class ZantraApp {
         });
       }
     }
+
+    if (this.gstExportForm && !this.gstExportInitialized) {
+      this.gstExportForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleGstExportDownload();
+      });
+      if (this.gstExportButton && this.gstExportButton.type === 'button') {
+        this.gstExportButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          this.handleGstExportDownload();
+        });
+      }
+      this.gstExportInitialized = true;
+    }
+  }
+
+  handleGstExportDownload() {
+    const startValue = this.gstExportStartInput?.value
+      ? this.gstExportStartInput.value.trim()
+      : '';
+    const endValue = this.gstExportEndInput?.value ? this.gstExportEndInput.value.trim() : '';
+    const feedback = this.gstExportFeedback ?? null;
+
+    if (feedback) {
+      delete feedback.dataset.tone;
+      feedback.textContent = '';
+    }
+
+    const setLoading = (isLoading) => {
+      if (!this.gstExportButton) {
+        return;
+      }
+      this.gstExportButton.disabled = isLoading;
+      if (isLoading) {
+        this.gstExportButton.setAttribute('aria-busy', 'true');
+      } else {
+        this.gstExportButton.removeAttribute('aria-busy');
+      }
+    };
+
+    setLoading(true);
+    try {
+      const result = ExportManager.downloadPaidInvoicesCsv({
+        startDate: startValue,
+        endDate: endValue
+      });
+      if (feedback) {
+        feedback.dataset.tone = 'success';
+        const invoiceLabel = result.rowCount === 1 ? 'invoice' : 'invoices';
+        feedback.textContent = `Downloaded ${result.rowCount} paid ${invoiceLabel}.`;
+      }
+    } catch (error) {
+      console.error(error);
+      if (feedback) {
+        feedback.dataset.tone = 'error';
+        feedback.textContent = error?.message ?? 'Unable to export GST CSV. Please try again.';
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   renderSettings() {
@@ -1604,6 +1672,7 @@ class ZantraApp {
         QuoteManager,
         PaymentManager,
         ReportManager,
+        ExportManager,
         SettingsManager
       };
     }
@@ -1623,5 +1692,6 @@ export {
   QuoteManager,
   PaymentManager,
   ReportManager,
+  ExportManager,
   SettingsManager
 };

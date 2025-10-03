@@ -834,6 +834,37 @@
                   </dl>
                 </section>
               </div>
+              <section class="card report-export">
+                <header class="card__header">
+                  <h2>GST CSV Export</h2>
+                  <p>Download paid invoices with GST totals for your selected period.</p>
+                </header>
+                <form class="card__body" data-gst-export-form novalidate>
+                  <div class="form-grid">
+                    <label class="form-field">
+                      <span>Start date</span>
+                      <input type="date" name="gstExportStart" data-gst-export-start />
+                    </label>
+                    <label class="form-field">
+                      <span>End date</span>
+                      <input type="date" name="gstExportEnd" data-gst-export-end />
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn--primary btn--md" data-action="download-gst-csv">
+                      <span class="btn__icon" aria-hidden="true">⬇️</span>
+                      <span>Download GST CSV</span>
+                    </button>
+                  </div>
+                  <p
+                    class="form-feedback"
+                    data-feedback
+                    data-gst-export-feedback
+                    role="status"
+                    aria-live="polite"
+                  ></p>
+                </form>
+              </section>
             </div>
           </section>
 
