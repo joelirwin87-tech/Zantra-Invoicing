@@ -314,7 +314,9 @@ class ZantraApp {
       openJobs: document.querySelector('[data-dashboard-value="openJobs"]'),
       invoicesDue: document.querySelector('[data-dashboard-value="invoicesDue"]'),
       quoteApproval: document.querySelector('[data-dashboard-value="quoteApproval"]'),
-      paymentTime: document.querySelector('[data-dashboard-value="paymentTime"]')
+      paymentTime: document.querySelector('[data-dashboard-value="paymentTime"]'),
+      upcomingRecurring: document.querySelector('[data-dashboard-value="upcomingRecurring"]'),
+      overdueInvoices: document.querySelector('[data-dashboard-value="overdueInvoices"]')
     };
 
     this.dashboardOutstandingList = document.querySelector('[data-dashboard-outstanding]');
@@ -508,6 +510,18 @@ class ZantraApp {
     }
     if (this.dashboardMetrics.paymentTime) {
       this.dashboardMetrics.paymentTime.textContent = `${metrics.averagePaymentTime} days`;
+    }
+    if (this.dashboardMetrics.upcomingRecurring) {
+      const upcomingLabel = metrics.upcomingRecurringCount === 1 ? 'invoice' : 'invoices';
+      this.dashboardMetrics.upcomingRecurring.textContent = `${metrics.upcomingRecurringCount} ${upcomingLabel} · ${formatCurrency(
+        metrics.upcomingRecurringAmount
+      )}`;
+    }
+    if (this.dashboardMetrics.overdueInvoices) {
+      const overdueLabel = metrics.overdueInvoiceCount === 1 ? 'invoice' : 'invoices';
+      this.dashboardMetrics.overdueInvoices.textContent = `${metrics.overdueInvoiceCount} ${overdueLabel} · ${formatCurrency(
+        metrics.overdueInvoiceAmount
+      )}`;
     }
 
     if (this.dashboardOutstandingList) {

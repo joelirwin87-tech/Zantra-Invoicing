@@ -4,6 +4,77 @@ import { QuoteManager } from './QuoteManager.js';
 import { PaymentManager } from './PaymentManager.js';
 
 const withTwoDecimals = (value) => Math.round(value * 100) / 100;
+const MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
+const UPCOMING_RECURRING_WINDOW_DAYS = 30;
+
+const parseDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return null;
+  }
+  return new Date(timestamp);
+};
+
+const resolveNextRecurringDate = (invoice) => {
+  if (!invoice || typeof invoice !== 'object') {
+    return null;
+  }
+  const schedule = invoice.recurringSchedule || invoice.recurring || {};
+  const candidates = [
+    invoice.nextIssueDate,
+    invoice.nextInvoiceDate,
+    invoice.nextRecurringDate,
+    schedule?.nextOccurrence,
+    schedule?.nextIssueDate,
+    schedule?.nextInvoiceDate,
+    schedule?.nextRunAt,
+    schedule?.nextScheduledAt
+  ];
+  for (const candidate of candidates) {
+    const date = parseDate(candidate);
+    if (date) {
+      return date;
+    }
+  }
+  return null;
+};
+
+const isRecurringEnabled = (invoice) => {
+  if (!invoice || typeof invoice !== 'object') {
+    return false;
+  }
+
+  if (typeof invoice.isRecurring === 'boolean') {
+    return invoice.isRecurring;
+  }
+
+  if (typeof invoice.recurring === 'boolean') {
+    return invoice.recurring;
+  }
+
+  const schedule = invoice.recurringSchedule || (typeof invoice.recurring === 'object' ? invoice.recurring : null);
+  if (schedule && typeof schedule === 'object') {
+    if ('enabled' in schedule && schedule.enabled === false) {
+      return false;
+    }
+    if ('isEnabled' in schedule && schedule.isEnabled === false) {
+      return false;
+    }
+    if ('isActive' in schedule && schedule.isActive === false) {
+      return false;
+    }
+    return true;
+  }
+
+  if (invoice.recurrenceRule || invoice.billingInterval || invoice.frequency) {
+    return true;
+  }
+
+  return Boolean(resolveNextRecurringDate(invoice));
+};
 
 const formatMonthKey = (dateIso) => {
   const timestamp = Date.parse(dateIso);
@@ -44,6 +115,32 @@ export class ReportManager {
     );
     const quoteApprovalRate = ReportManager.getQuoteApprovalRate();
     const averagePaymentTime = PaymentManager.getAveragePaymentDays();
+    const now = Date.now();
+    const recurringWindowEnd = now + UPCOMING_RECURRING_WINDOW_DAYS * MILLISECONDS_IN_DAY;
+    const upcomingRecurringInvoices = invoices.filter((invoice) => {
+      if (!isRecurringEnabled(invoice)) {
+        return false;
+      }
+      const nextDate = resolveNextRecurringDate(invoice);
+      if (!nextDate) {
+        return false;
+      }
+      const time = nextDate.getTime();
+      return time >= now && time <= recurringWindowEnd;
+    });
+    const upcomingRecurringAmount = withTwoDecimals(
+      upcomingRecurringInvoices.reduce((total, invoice) => total + (invoice.total ?? 0), 0)
+    );
+    const overdueInvoices = outstandingInvoices.filter((invoice) => {
+      const dueDate = parseDate(invoice.dueDate);
+      if (!dueDate) {
+        return false;
+      }
+      return dueDate.getTime() < now;
+    });
+    const overdueInvoiceAmount = withTwoDecimals(
+      overdueInvoices.reduce((total, invoice) => total + (invoice.balanceDue ?? invoice.total ?? 0), 0)
+    );
 
     return {
       openJobs,
@@ -53,7 +150,11 @@ export class ReportManager {
       averagePaymentTime,
       totalInvoices: invoices.length,
       totalQuotes: quotes.length,
-      totalPayments: payments.length
+      totalPayments: payments.length,
+      upcomingRecurringCount: upcomingRecurringInvoices.length,
+      upcomingRecurringAmount,
+      overdueInvoiceCount: overdueInvoices.length,
+      overdueInvoiceAmount
     };
   }
 
