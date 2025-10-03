@@ -14,6 +14,7 @@ import { QuoteManager } from './managers/QuoteManager.js';
 import { PaymentManager } from './managers/PaymentManager.js';
 import { ReportManager } from './managers/ReportManager.js';
 import { SettingsManager } from './managers/SettingsManager.js';
+import { InvoiceDocumentManager } from './managers/InvoiceDocumentManager.js';
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -767,6 +768,8 @@ class ZantraApp {
               : '';
           const actions = [
             `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${invoice.id}">Edit</button>`,
+            `<button class="btn btn--sm btn--ghost" data-action="download" data-id="${invoice.id}">Download PDF</button>`,
+            `<button class="btn btn--sm btn--ghost" data-action="email" data-id="${invoice.id}">Email</button>`,
             (invoice.balanceDue ?? invoice.total) > 0
               ? `<button class="btn btn--sm btn--primary" data-action="mark-paid" data-id="${invoice.id}">Mark paid</button>`
               : '',
@@ -834,6 +837,46 @@ class ZantraApp {
           InvoiceManager.remove(invoiceId);
           this.refreshData();
           this.renderAll();
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="download"]').forEach((button) => {
+        button.addEventListener('click', async (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          if (!invoiceId) {
+            return;
+          }
+          try {
+            await InvoiceDocumentManager.downloadPdf(invoiceId);
+          } catch (error) {
+            console.error('Failed to generate invoice PDF:', error);
+            try {
+              InvoiceDocumentManager.openPrintPreview(invoiceId);
+            } catch (previewError) {
+              console.error('Failed to open print preview:', previewError);
+            }
+          }
+        });
+      });
+
+      this.invoiceListBody.querySelectorAll('[data-action="email"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const invoiceId = button.getAttribute('data-id');
+          if (!invoiceId) {
+            return;
+          }
+          try {
+            const mailto = InvoiceDocumentManager.generateMailtoLink(invoiceId);
+            if (mailto) {
+              window.location.href = mailto;
+            } else {
+              window.alert('No email address is configured for this client.');
+            }
+          } catch (error) {
+            console.error('Failed to generate email link:', error);
+          }
         });
       });
     }
