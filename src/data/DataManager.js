@@ -6,7 +6,8 @@ const COLLECTION_KEYS = {
   clients: 'clients',
   services: 'services',
   payments: 'payments',
-  settings: 'settings'
+  settings: 'settings',
+  recurringSchedules: 'recurringSchedules'
 };
 
 const BACKUP_SCHEMA_VERSION = 1;
@@ -344,6 +345,18 @@ export class DataManager {
 
   static deletePayment(paymentId) {
     return DataManager.#deleteRecord(COLLECTION_KEYS.payments, paymentId);
+  }
+
+  static listRecurringSchedules() {
+    return DataManager.#getCollection(COLLECTION_KEYS.recurringSchedules);
+  }
+
+  static saveRecurringSchedule(schedule) {
+    return DataManager.#saveRecord(COLLECTION_KEYS.recurringSchedules, schedule);
+  }
+
+  static deleteRecurringSchedule(scheduleId) {
+    return DataManager.#deleteRecord(COLLECTION_KEYS.recurringSchedules, scheduleId);
   }
 
   static #getCollection(key) {

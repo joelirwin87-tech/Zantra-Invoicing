@@ -278,16 +278,19 @@ class ZantraApp {
       invoices: [],
       quotes: [],
       payments: [],
+      recurringSchedules: [],
       settings: SettingsManager.get()
     };
     this.reportChart = null;
     this.invoiceFormInitialized = false;
     this.quoteFormInitialized = false;
+    this.recurringFormInitialized = false;
     this.clientFormInitialized = false;
     this.serviceFormInitialized = false;
     this.settingsFormInitialized = false;
     this.gstExportInitialized = false;
     this.toastDismissTimeout = null;
+    this.recentlyGeneratedRecurringInvoices = [];
     this.handleQuoteListClick = this.handleQuoteListClick.bind(this);
     this.handleGstExportDownload = this.handleGstExportDownload.bind(this);
   }
@@ -314,6 +317,7 @@ class ZantraApp {
     this.resumeSetupButton = document.querySelector('.resume-setup-btn');
     this.newInvoiceButton = document.querySelector('.new-invoice-btn');
     this.sectionInvoiceButtons = Array.from(document.querySelectorAll('[data-action="open-invoice-form"]'));
+    this.newRecurringButton = document.querySelector('[data-action="open-recurring-form"]');
     this.newQuoteButton = document.querySelector('[data-action="open-quote-form"]');
 
     this.dashboardMetrics = {
@@ -326,9 +330,13 @@ class ZantraApp {
     };
 
     this.dashboardOutstandingList = document.querySelector('[data-dashboard-outstanding]');
+    this.dashboardRecurringList = document.querySelector('[data-dashboard-recurring]');
 
     this.invoiceForm = document.querySelector('#invoice-form');
     this.invoiceListBody = document.querySelector('[data-table="invoices"] tbody');
+
+    this.recurringForm = document.querySelector('#recurring-form');
+    this.recurringListBody = document.querySelector('[data-table="recurring"] tbody');
 
     this.quoteForm = document.querySelector('#quote-form');
     this.quoteListBody = document.querySelector('[data-table="quotes"] tbody');
@@ -366,6 +374,15 @@ class ZantraApp {
       services: this.state.services,
       gstRate: this.state.settings.gstRate
     });
+    if (this.recurringForm) {
+      this.recurringFormEditor = new LineItemEditor(this.recurringForm, {
+        onTotalsChange: (items) => this.updateRecurringTotals(items),
+        services: this.state.services,
+        gstRate: this.state.settings.gstRate
+      });
+    } else {
+      this.recurringFormEditor = null;
+    }
 
     if (this.quoteListBody) {
       this.quoteListBody.addEventListener('click', this.handleQuoteListClick);
@@ -470,6 +487,13 @@ class ZantraApp {
           this.activateSection('invoices');
           this.toggleInvoiceForm(true);
         });
+      });
+    }
+    if (this.newRecurringButton) {
+      this.newRecurringButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.activateSection('invoices');
+        this.toggleRecurringForm(true);
       });
     }
     if (this.newQuoteButton) {
@@ -583,6 +607,7 @@ class ZantraApp {
   }
 
   refreshData() {
+    this.recentlyGeneratedRecurringInvoices = RecurringInvoiceManager.executeDueSchedules();
     this.state.clients = ClientManager.list();
     this.state.services = ServiceManager.list();
     this.state.invoices = InvoiceManager.list().map((invoice) => ({
@@ -594,23 +619,30 @@ class ZantraApp {
       type: quote.type || 'quote'
     }));
     this.state.payments = PaymentManager.list();
+    this.state.recurringSchedules = RecurringInvoiceManager.list();
     this.state.settings = SettingsManager.get();
 
     this.invoiceFormEditor.refreshServices(this.state.services);
     this.quoteFormEditor.refreshServices(this.state.services);
     this.invoiceFormEditor.gstRate = this.state.settings.gstRate;
     this.quoteFormEditor.gstRate = this.state.settings.gstRate;
+    if (this.recurringFormEditor) {
+      this.recurringFormEditor.refreshServices(this.state.services);
+      this.recurringFormEditor.gstRate = this.state.settings.gstRate;
+    }
   }
 
   renderAll() {
     this.renderDashboard();
     this.renderInvoices();
+    this.renderRecurringSchedules();
     this.renderQuotes();
     this.renderClients();
     this.renderServices();
     this.renderPayments();
     this.renderReports();
     this.renderSettings();
+    this.notifyRecurringGeneration();
   }
 
   renderDashboard() {
@@ -658,6 +690,59 @@ class ZantraApp {
         });
       }
     }
+
+    if (this.dashboardRecurringList) {
+      clearChildren(this.dashboardRecurringList);
+      const upcoming = this.state.recurringSchedules
+        .filter((schedule) => schedule.nextRun)
+        .sort((a, b) => Date.parse(a.nextRun) - Date.parse(b.nextRun));
+      if (!upcoming.length) {
+        const empty = document.createElement('li');
+        empty.textContent = 'No recurring invoices scheduled.';
+        this.dashboardRecurringList.appendChild(empty);
+      } else {
+        const now = Date.now();
+        upcoming.slice(0, 5).forEach((schedule) => {
+          const nextRunTime = Date.parse(schedule.nextRun);
+          const status = Number.isNaN(nextRunTime)
+            ? 'Scheduled'
+            : nextRunTime < now
+            ? 'Overdue'
+            : 'Due';
+          const label = `${status} ${formatDate(schedule.nextRun)}`;
+          const item = document.createElement('li');
+          item.innerHTML = `<strong>${schedule.name}</strong> · ${schedule.clientBusinessName || schedule.clientName} · ${
+            schedule.frequencyLabel
+          } · ${label}`;
+          this.dashboardRecurringList.appendChild(item);
+        });
+      }
+    }
+  }
+
+  notifyRecurringGeneration() {
+    if (!Array.isArray(this.recentlyGeneratedRecurringInvoices)) {
+      return;
+    }
+    const results = this.recentlyGeneratedRecurringInvoices;
+    if (!results.length) {
+      return;
+    }
+
+    const count = results.length;
+    const names = Array.from(
+      new Set(
+        results
+          .map((result) => result?.schedule?.name || '')
+          .filter((name) => typeof name === 'string' && name.trim())
+      )
+    );
+    const displayedNames = names.slice(0, 3).join(', ');
+    const moreSuffix = names.length > 3 ? ', …' : '';
+    const scheduleSummary = names.length ? ` from ${displayedNames}${moreSuffix}` : '';
+    const message = `Generated ${count} recurring invoice${count === 1 ? '' : 's'}${scheduleSummary}.`;
+    this.showToast(message, 'success');
+    this.recentlyGeneratedRecurringInvoices = [];
   }
 
   toggleInvoiceForm(visible, invoice = null) {
@@ -741,6 +826,113 @@ class ZantraApp {
       this.invoiceFormEditor.addRow();
     }
     this.updateInvoiceTotals(invoice.lineItems || []);
+  }
+
+  toggleRecurringForm(visible, schedule = null) {
+    if (!this.recurringForm) {
+      return;
+    }
+    const feedback = this.recurringForm.querySelector('[data-feedback]');
+    if (feedback) {
+      feedback.textContent = '';
+    }
+    const idField = this.recurringForm.querySelector('[name="scheduleId"]');
+    if (!visible) {
+      this.recurringFormEditor?.removeAll();
+      this.recurringForm.reset();
+      this.updateRecurringTotals([]);
+      toggleHidden(this.recurringForm, true);
+      if (idField) {
+        idField.value = '';
+      }
+      delete this.recurringForm.dataset.mode;
+      return;
+    }
+
+    toggleHidden(this.recurringForm, false);
+    this.recurringForm.reset();
+    this.recurringFormEditor?.removeAll();
+
+    if (schedule) {
+      this.recurringForm.dataset.mode = 'edit';
+      if (idField) {
+        idField.value = schedule.id;
+      }
+      this.populateRecurringForm(schedule);
+    } else {
+      this.recurringForm.dataset.mode = 'create';
+      if (idField) {
+        idField.value = '';
+      }
+      const today = new Date();
+      const startInput = this.recurringForm.querySelector('[name="startDate"]');
+      const nextInput = this.recurringForm.querySelector('[name="nextRun"]');
+      setDateInputValue(startInput, today);
+      setDateInputValue(nextInput, today);
+      const dueDaysInput = this.recurringForm.querySelector('[name="dueDays"]');
+      if (dueDaysInput) {
+        dueDaysInput.value = '14';
+      }
+      const frequencySelect = this.recurringForm.querySelector('[name="frequency"]');
+      if (frequencySelect && !frequencySelect.value) {
+        const options = RecurringInvoiceManager.getFrequencyOptions();
+        if (options.length) {
+          const preferred = options.find((option) => option.value === 'monthly') || options[0];
+          frequencySelect.value = preferred.value;
+        }
+      }
+      this.recurringFormEditor?.addRow();
+      this.updateRecurringTotals(this.recurringFormEditor ? this.recurringFormEditor.getItems() : []);
+    }
+
+    const nameInput = this.recurringForm.querySelector('[name="name"]');
+    nameInput?.focus();
+    this.recurringForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  populateRecurringForm(schedule) {
+    if (!this.recurringForm || !schedule) {
+      return;
+    }
+    const nameInput = this.recurringForm.querySelector('[name="name"]');
+    if (nameInput) {
+      nameInput.value = schedule.name || '';
+    }
+    const clientSelect = this.recurringForm.querySelector('[name="clientId"]');
+    if (clientSelect) {
+      clientSelect.value = schedule.clientId || '';
+    }
+    const startInput = this.recurringForm.querySelector('[name="startDate"]');
+    const nextInput = this.recurringForm.querySelector('[name="nextRun"]');
+    setDateInputValue(startInput, schedule.startDate);
+    setDateInputValue(nextInput, schedule.nextRun || schedule.startDate);
+    const frequencySelect = this.recurringForm.querySelector('[name="frequency"]');
+    if (frequencySelect) {
+      frequencySelect.value = schedule.frequency || frequencySelect.value;
+    }
+    const dueDaysInput = this.recurringForm.querySelector('[name="dueDays"]');
+    if (dueDaysInput) {
+      dueDaysInput.value = Number.parseInt(schedule.dueDays, 10) || 14;
+    }
+    const notesInput = this.recurringForm.querySelector('[name="notes"]');
+    if (notesInput) {
+      notesInput.value = schedule.notes || '';
+    }
+
+    if (Array.isArray(schedule.lineItems) && schedule.lineItems.length) {
+      schedule.lineItems.forEach((item) => {
+        this.recurringFormEditor?.addRow({
+          serviceId: item.serviceId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          applyGst: item.applyGst
+        });
+      });
+    } else {
+      this.recurringFormEditor?.addRow();
+    }
+    this.updateRecurringTotals(schedule.lineItems || []);
   }
 
   toggleQuoteForm(visible, quote = null) {
@@ -831,6 +1023,20 @@ class ZantraApp {
     const subtotal = this.invoiceForm.querySelector('[data-total="subtotal"]');
     const gst = this.invoiceForm.querySelector('[data-total="gst"]');
     const total = this.invoiceForm.querySelector('[data-total="total"]');
+    if (subtotal) subtotal.textContent = formatCurrency(totals.subtotal);
+    if (gst) gst.textContent = formatCurrency(totals.gstTotal);
+    if (total) total.textContent = formatCurrency(totals.total);
+  }
+
+  updateRecurringTotals(items) {
+    if (!this.recurringForm) {
+      return;
+    }
+    const lineItems = Array.isArray(items) ? items : [];
+    const totals = InvoiceManager.calculateTotals(lineItems, this.state.settings.gstRate);
+    const subtotal = this.recurringForm.querySelector('[data-recurring-total="subtotal"]');
+    const gst = this.recurringForm.querySelector('[data-recurring-total="gst"]');
+    const total = this.recurringForm.querySelector('[data-recurring-total="total"]');
     if (subtotal) subtotal.textContent = formatCurrency(totals.subtotal);
     if (gst) gst.textContent = formatCurrency(totals.gstTotal);
     if (total) total.textContent = formatCurrency(totals.total);
@@ -1038,6 +1244,161 @@ class ZantraApp {
     }
   }
 
+  renderRecurringSchedules() {
+    if (!this.recurringForm || !this.recurringListBody) {
+      return;
+    }
+
+    const clientSelect = this.recurringForm.querySelector('[name="clientId"]');
+    if (clientSelect) {
+      const currentValue = clientSelect.value;
+      clearChildren(clientSelect);
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Select client';
+      clientSelect.appendChild(placeholder);
+      this.state.clients.forEach((client) => {
+        const option = document.createElement('option');
+        option.value = client.id;
+        option.textContent = `${client.businessName} (${client.name})`;
+        clientSelect.appendChild(option);
+      });
+      if (currentValue) {
+        clientSelect.value = currentValue;
+      }
+    }
+
+    const frequencySelect = this.recurringForm.querySelector('[name="frequency"]');
+    if (frequencySelect) {
+      const currentValue = frequencySelect.value;
+      clearChildren(frequencySelect);
+      const options = RecurringInvoiceManager.getFrequencyOptions();
+      options.forEach(({ value, label }) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        frequencySelect.appendChild(option);
+      });
+      if (currentValue) {
+        frequencySelect.value = currentValue;
+      } else {
+        const preferred = options.find((option) => option.value === 'monthly');
+        if (preferred) {
+          frequencySelect.value = preferred.value;
+        }
+      }
+    }
+
+    if (!this.recurringFormInitialized) {
+      this.recurringForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleRecurringSubmit();
+      });
+      const addLineButton = this.recurringForm.querySelector('[data-action="add-line"]');
+      addLineButton?.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.recurringFormEditor?.addRow();
+      });
+      const cancelButton = this.recurringForm.querySelector('[data-action="cancel"]');
+      cancelButton?.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.toggleRecurringForm(false);
+      });
+      this.recurringFormInitialized = true;
+    }
+
+    clearChildren(this.recurringListBody);
+    if (!this.state.recurringSchedules.length) {
+      const emptyRow = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 6;
+      cell.textContent = 'No recurring schedules configured yet.';
+      emptyRow.appendChild(cell);
+      this.recurringListBody.appendChild(emptyRow);
+      return;
+    }
+
+    this.state.recurringSchedules.forEach((schedule) => {
+      const row = document.createElement('tr');
+      const clientLabel = schedule.clientBusinessName || schedule.clientName || 'Unknown client';
+      const clientMeta =
+        schedule.clientBusinessName &&
+        schedule.clientName &&
+        schedule.clientBusinessName !== schedule.clientName;
+      const actions = [
+        `<button class="btn btn--sm btn--ghost" data-action="edit" data-id="${schedule.id}">Edit</button>`,
+        `<button class="btn btn--sm btn--primary" data-action="run" data-id="${schedule.id}">Run now</button>`,
+        `<button class="btn btn--sm btn--destructive" data-action="delete" data-id="${schedule.id}">Delete</button>`
+      ].join('');
+      const lastRun = schedule.lastRun ? formatDate(schedule.lastRun) : '—';
+      const nextRun = schedule.nextRun ? formatDate(schedule.nextRun) : '—';
+      row.innerHTML = `
+        <td>
+          <div class="table-cell__primary">${schedule.name}</div>
+          ${schedule.description ? `<div class="status-meta">${schedule.description}</div>` : ''}
+        </td>
+        <td>
+          <div class="table-cell__primary">${clientLabel}</div>
+          ${clientMeta ? `<div class="status-meta">${schedule.clientName}</div>` : ''}
+        </td>
+        <td>${schedule.frequencyLabel}</td>
+        <td>${nextRun}</td>
+        <td>${lastRun}</td>
+        <td class="text-right">${actions}</td>
+      `;
+      this.recurringListBody.appendChild(row);
+    });
+
+    this.recurringListBody.querySelectorAll('[data-action="edit"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const scheduleId = button.getAttribute('data-id');
+        const schedule = this.state.recurringSchedules.find((item) => item.id === scheduleId);
+        if (!schedule) {
+          this.showToast('Unable to locate the selected schedule.', 'error');
+          return;
+        }
+        this.toggleRecurringForm(true, schedule);
+      });
+    });
+
+    this.recurringListBody.querySelectorAll('[data-action="run"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const scheduleId = button.getAttribute('data-id');
+        if (!scheduleId) {
+          return;
+        }
+        const outcome = RecurringInvoiceManager.runSchedule(scheduleId);
+        if (!outcome) {
+          this.showToast('Unable to run the schedule. Please try again.', 'error');
+          return;
+        }
+        this.showToast(`Invoice generated from ${outcome.schedule.name}.`, 'success');
+        this.refreshData();
+        this.renderAll();
+      });
+    });
+
+    this.recurringListBody.querySelectorAll('[data-action="delete"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const scheduleId = button.getAttribute('data-id');
+        if (!scheduleId) {
+          return;
+        }
+        const confirmed = window.confirm('Delete this recurring schedule? This action cannot be undone.');
+        if (!confirmed) {
+          return;
+        }
+        RecurringInvoiceManager.remove(scheduleId);
+        this.refreshData();
+        this.renderAll();
+        this.showToast('Recurring schedule removed.', 'info');
+      });
+    });
+  }
+
   handleInvoiceSubmit() {
     const form = this.invoiceForm;
     const invoiceId = form.querySelector('[name="invoiceId"]').value;
@@ -1083,6 +1444,80 @@ class ZantraApp {
       console.error(error);
       if (feedback) {
         feedback.textContent = error.message;
+      }
+    }
+  }
+
+  handleRecurringSubmit() {
+    if (!this.recurringForm) {
+      return;
+    }
+    const form = this.recurringForm;
+    const scheduleId = form.querySelector('[name="scheduleId"]').value.trim();
+    const name = form.querySelector('[name="name"]').value.trim();
+    const clientId = form.querySelector('[name="clientId"]').value.trim();
+    const startDate = form.querySelector('[name="startDate"]').value;
+    let nextRun = form.querySelector('[name="nextRun"]').value;
+    const frequency = form.querySelector('[name="frequency"]').value;
+    const dueDaysInput = form.querySelector('[name="dueDays"]').value;
+    const notes = form.querySelector('[name="notes"]').value;
+    const items = this.recurringFormEditor ? this.recurringFormEditor.getItems() : [];
+    const feedback = form.querySelector('[data-feedback]');
+
+    if (feedback) {
+      feedback.textContent = '';
+    }
+
+    try {
+      if (!name) {
+        throw new Error('Provide a schedule name.');
+      }
+      if (!clientId) {
+        throw new Error('Select a client for the schedule.');
+      }
+      if (!startDate) {
+        throw new Error('Choose a start date.');
+      }
+      if (!nextRun) {
+        nextRun = startDate;
+      }
+      if (!frequency) {
+        throw new Error('Select a recurrence frequency.');
+      }
+      if (!items.length) {
+        throw new Error('Add at least one line item before saving.');
+      }
+      const dueDays = Number.parseInt(dueDaysInput, 10);
+      if (!Number.isFinite(dueDays) || dueDays < 1) {
+        throw new Error('Due in (days) must be at least 1.');
+      }
+
+      const payload = {
+        name,
+        clientId,
+        startDate,
+        nextRun,
+        frequency,
+        dueDays,
+        notes,
+        lineItems: items
+      };
+
+      if (scheduleId) {
+        RecurringInvoiceManager.update(scheduleId, payload);
+        this.showToast('Recurring schedule updated.', 'success');
+      } else {
+        RecurringInvoiceManager.create(payload);
+        this.showToast('Recurring schedule created.', 'success');
+      }
+
+      this.toggleRecurringForm(false);
+      this.refreshData();
+      this.renderAll();
+    } catch (error) {
+      console.error('Failed to save recurring schedule:', error);
+      if (feedback) {
+        feedback.textContent = error.message || 'Unable to save schedule. Please try again.';
       }
     }
   }
