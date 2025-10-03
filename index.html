@@ -785,6 +785,38 @@
                 </article>
                 <article class="report-card">
                   <div>
+                    <h2 class="report-card__title">GST CSV Export</h2>
+                    <p class="report-card__copy">
+                      Download invoice GST totals filtered by date range and payment status.
+                    </p>
+                  </div>
+                  <form class="report-card__form" data-gst-export-form novalidate>
+                    <div class="report-card__form-grid">
+                      <div class="field">
+                        <label for="gst-export-start">Start date</label>
+                        <input id="gst-export-start" type="date" name="gstExportStart" required />
+                      </div>
+                      <div class="field">
+                        <label for="gst-export-end">End date</label>
+                        <input id="gst-export-end" type="date" name="gstExportEnd" required />
+                      </div>
+                      <div class="field">
+                        <label for="gst-export-status">Invoice status</label>
+                        <select id="gst-export-status" name="gstExportStatus">
+                          <option value="all">All statuses</option>
+                          <option value="paid">Paid</option>
+                          <option value="partial">Partially paid</option>
+                          <option value="unpaid">Unpaid</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button class="report-card__action" type="submit" data-action="download-gst-csv">
+                      Download GST CSV
+                    </button>
+                  </form>
+                </article>
+                <article class="report-card">
+                  <div>
                     <h2 class="report-card__title">Profit &amp; Loss</h2>
                     <p class="report-card__copy">
                       Review earnings and expenses by period with gross and net totals.

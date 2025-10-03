@@ -1306,6 +1306,37 @@ textarea {
   color: #0b0b16;
 }
 
+.report-card__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.report-card__form-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 40rem) {
+  .report-card__form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+.report-card__form .field label {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.report-card__form .field input,
+.report-card__form .field select {
+  background: rgba(15, 15, 31, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--text);
+  padding: var(--space-3);
+}
+
 .report-visuals {
   background: rgba(11, 11, 22, 0.72);
   border-radius: calc(var(--radius) + 4px);

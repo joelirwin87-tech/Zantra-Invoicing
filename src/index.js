@@ -14,6 +14,7 @@ import { QuoteManager } from './managers/QuoteManager.js';
 import { PaymentManager } from './managers/PaymentManager.js';
 import { ReportManager } from './managers/ReportManager.js';
 import { SettingsManager } from './managers/SettingsManager.js';
+import { ExportManager } from './managers/ExportManager.js';
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -283,8 +284,10 @@ class ZantraApp {
     this.clientFormInitialized = false;
     this.serviceFormInitialized = false;
     this.settingsFormInitialized = false;
+    this.gstExportFormInitialized = false;
     this.toastDismissTimeout = null;
     this.handleQuoteListClick = this.handleQuoteListClick.bind(this);
+    this.handleGstExportSubmit = this.handleGstExportSubmit.bind(this);
   }
 
   init() {
@@ -336,6 +339,7 @@ class ZantraApp {
 
     this.settingsForm = document.querySelector('#settings-form');
     this.reportCanvas = document.getElementById('reports-chart');
+    this.gstExportForm = document.querySelector('[data-gst-export-form]');
 
     this.toastRegion = document.querySelector('[data-toast-region]');
 
@@ -1478,6 +1482,19 @@ class ZantraApp {
     if (!this.reportCanvas) {
       return;
     }
+
+    if (this.gstExportForm && !this.gstExportFormInitialized) {
+      this.gstExportForm.addEventListener('submit', this.handleGstExportSubmit);
+      const startInput = this.gstExportForm.querySelector('[name="gstExportStart"]');
+      const endInput = this.gstExportForm.querySelector('[name="gstExportEnd"]');
+      if (startInput && !startInput.value && endInput && !endInput.value) {
+        const defaultRange = this.getDefaultGstExportRange();
+        setDateInputValue(startInput, defaultRange.start);
+        setDateInputValue(endInput, defaultRange.end);
+      }
+      this.gstExportFormInitialized = true;
+    }
+
     const ctx = this.reportCanvas.getContext('2d');
     const summary = ReportManager.getMonthlyInvoiceSummary(6);
     const gstSummary = ReportManager.getGstSummary();
@@ -1538,6 +1555,80 @@ class ZantraApp {
             }
           }
         });
+      }
+    }
+  }
+
+  getDefaultGstExportRange() {
+    const now = new Date();
+    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    const start = new Date(now.getFullYear(), quarterStartMonth, 1);
+    const end = new Date(now.getFullYear(), quarterStartMonth + 3, 0);
+    return { start, end };
+  }
+
+  handleGstExportSubmit(event) {
+    event.preventDefault();
+    if (!this.gstExportForm) {
+      return;
+    }
+
+    const startInput = this.gstExportForm.querySelector('[name="gstExportStart"]');
+    const endInput = this.gstExportForm.querySelector('[name="gstExportEnd"]');
+    const statusInput = this.gstExportForm.querySelector('[name="gstExportStatus"]');
+    const submitButton = this.gstExportForm.querySelector('[data-action="download-gst-csv"]');
+
+    const startValue = startInput?.value;
+    const endValue = endInput?.value;
+    const statusValue = statusInput?.value;
+
+    if (!startValue || !endValue) {
+      this.showToast('Select a start and end date before exporting.', 'error');
+      return;
+    }
+
+    const startTimestamp = Date.parse(startValue);
+    const endTimestamp = Date.parse(endValue);
+
+    if (Number.isNaN(startTimestamp) || Number.isNaN(endTimestamp)) {
+      this.showToast('The selected dates are invalid. Please choose valid calendar dates.', 'error');
+      return;
+    }
+
+    if (startTimestamp > endTimestamp) {
+      this.showToast('Start date must be on or before the end date.', 'error');
+      return;
+    }
+
+    const filterStatus = statusValue && statusValue !== 'all' ? statusValue : undefined;
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.setAttribute('aria-busy', 'true');
+    }
+
+    try {
+      const exportResult = ExportManager.downloadGstCsv({
+        startDate: startValue,
+        endDate: endValue,
+        status: filterStatus
+      });
+      const startLabel = new Date(startTimestamp).toLocaleDateString();
+      const endLabel = new Date(endTimestamp).toLocaleDateString();
+      const rowCount = exportResult?.rowCount ?? 0;
+      const noun = rowCount === 1 ? 'invoice' : 'invoices';
+      this.showToast(
+        `Downloading GST CSV for ${rowCount} ${noun} (${startLabel} – ${endLabel}).`,
+        'success'
+      );
+    } catch (error) {
+      console.error('GST CSV export failed:', error);
+      const message = error?.message || 'Unable to export GST CSV. Please try again.';
+      this.showToast(message, 'error');
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.removeAttribute('aria-busy');
       }
     }
   }
@@ -1604,7 +1695,8 @@ class ZantraApp {
         QuoteManager,
         PaymentManager,
         ReportManager,
-        SettingsManager
+        SettingsManager,
+        ExportManager
       };
     }
   }
@@ -1623,5 +1715,6 @@ export {
   QuoteManager,
   PaymentManager,
   ReportManager,
-  SettingsManager
+  SettingsManager,
+  ExportManager
 };
