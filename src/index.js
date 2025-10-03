@@ -15,6 +15,7 @@ import { QuoteManager } from './managers/QuoteManager.js';
 import { PaymentManager } from './managers/PaymentManager.js';
 import { ReportManager } from './managers/ReportManager.js';
 import { SettingsManager } from './managers/SettingsManager.js';
+import { BackupManager } from './managers/BackupManager.js';
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -292,6 +293,7 @@ class ZantraApp {
     this.cacheDom();
     this.setupNavigation();
     this.bindHeaderActions();
+    this.bindBackupActions();
     this.refreshData();
     this.renderAll();
     this.exposeGlobals();
@@ -338,6 +340,10 @@ class ZantraApp {
     this.paymentHistoryBody = document.querySelector('[data-table="payments-history"] tbody');
 
     this.settingsForm = document.querySelector('#settings-form');
+    this.backupExportButton = document.querySelector('[data-action="export-backup"]');
+    this.backupRestoreButton = document.querySelector('[data-action="restore-backup"]');
+    this.backupFileInput = document.querySelector('[data-backup-input]');
+    this.backupStatus = document.querySelector('[data-backup-feedback]');
     this.reportCanvas = document.getElementById('reports-chart');
 
     this.toastRegion = document.querySelector('[data-toast-region]');
@@ -463,6 +469,107 @@ class ZantraApp {
         event.preventDefault();
         this.activateSection('quotes');
         this.toggleQuoteForm(true);
+      });
+    }
+  }
+
+  bindBackupActions() {
+    if (!this.backupExportButton && !this.backupRestoreButton) {
+      return;
+    }
+
+    const setLoading = (loading) => {
+      const isLoading = Boolean(loading);
+      const controls = [this.backupExportButton, this.backupRestoreButton];
+      controls.forEach((control) => {
+        if (control) {
+          control.disabled = isLoading;
+          control.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        }
+      });
+      if (this.backupStatus) {
+        this.backupStatus.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+      }
+    };
+
+    const setStatus = (message = '', state = 'idle') => {
+      if (!this.backupStatus) {
+        return;
+      }
+      this.backupStatus.textContent = message;
+      if (!state || state === 'idle') {
+        this.backupStatus.removeAttribute('data-state');
+      } else {
+        this.backupStatus.setAttribute('data-state', state);
+      }
+    };
+
+    const describeExportedAt = (value) => {
+      if (!value) {
+        return '';
+      }
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) {
+        return '';
+      }
+      const date = new Date(parsed);
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    };
+
+    setStatus('', 'idle');
+    setLoading(false);
+
+    if (this.backupExportButton) {
+      this.backupExportButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        try {
+          setLoading(true);
+          setStatus('Preparing backup...', 'loading');
+          const payload = await BackupManager.downloadBackup();
+          const exportedAt = describeExportedAt(payload.exportedAt);
+          setStatus(
+            exportedAt ? `Backup downloaded (${exportedAt}). Keep it in a safe place.` : 'Backup downloaded. Keep it in a safe place.',
+            'success'
+          );
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Failed to export backup.', 'error');
+        } finally {
+          setLoading(false);
+        }
+      });
+    }
+
+    if (this.backupRestoreButton && this.backupFileInput) {
+      this.backupRestoreButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.backupFileInput.click();
+      });
+
+      this.backupFileInput.addEventListener('change', async (event) => {
+        const [file] = event.target.files || [];
+        if (!file) {
+          setStatus('', 'idle');
+          return;
+        }
+        try {
+          setLoading(true);
+          setStatus('Restoring backup...', 'loading');
+          const payload = await BackupManager.restoreBackup(file);
+          const exportedAt = describeExportedAt(payload.exportedAt);
+          setStatus(
+            exportedAt ? `Backup restored (${exportedAt}).` : 'Backup restored successfully.',
+            'success'
+          );
+          this.refreshData();
+          this.renderAll();
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Failed to restore backup.', 'error');
+        } finally {
+          setLoading(false);
+          this.backupFileInput.value = '';
+        }
       });
     }
   }
@@ -1689,7 +1796,8 @@ class ZantraApp {
         QuoteManager,
         PaymentManager,
         ReportManager,
-        SettingsManager
+        SettingsManager,
+        BackupManager
       };
     }
   }
@@ -1709,5 +1817,6 @@ export {
   QuoteManager,
   PaymentManager,
   ReportManager,
-  SettingsManager
+  SettingsManager,
+  BackupManager
 };
