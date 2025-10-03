@@ -1,294 +1,211 @@
 import { InvoiceManager } from './InvoiceManager.js';
 
-const CSV_HEADERS = [
-  'Invoice Number',
-  'Issue Date',
-  'Due Date',
-  'Client Name',
-  'Client Business Name',
-  'Status',
-  'Subtotal',
-  'GST Total',
-  'Invoice Total',
-  'Amount Paid',
-  'Balance Due'
+const CSV_COLUMNS = [
+  { key: 'invoiceNumber', label: 'Invoice Number' },
+  { key: 'issueDate', label: 'Issue Date' },
+  { key: 'paidDate', label: 'Paid Date' },
+  { key: 'clientName', label: 'Client Name' },
+  { key: 'clientBusinessName', label: 'Client Business Name' },
+  { key: 'subtotal', label: 'Subtotal (ex GST)' },
+  { key: 'gstTotal', label: 'GST Amount' },
+  { key: 'invoiceTotal', label: 'Invoice Total' },
+  { key: 'amountPaid', label: 'Amount Paid' }
 ];
 
-const STATUS_WHITELIST = new Set(['paid', 'partial', 'unpaid']);
+const sanitizeDateBoundary = (value, boundary) => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (!trimmed) {
+    return null;
+  }
+
+  let parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    parsed = new Date(`${trimmed}T00:00:00`);
+  }
+
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid ${boundary} date. Please enter a valid date.`);
+  }
+
+  const date = new Date(parsed.getTime());
+  if (boundary === 'end') {
+    date.setHours(23, 59, 59, 999);
+  } else {
+    date.setHours(0, 0, 0, 0);
+  }
+  return date;
+};
+
+const resolveTimestamp = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return null;
+  }
+  return timestamp;
+};
+
+const formatDateForCsv = (value) => {
+  const timestamp = resolveTimestamp(value);
+  if (!timestamp) {
+    return '';
+  }
+  return new Date(timestamp).toISOString().slice(0, 10);
+};
+
+const formatCurrencyValue = (value) => {
+  const numeric = Number.parseFloat(value);
+  if (Number.isNaN(numeric) || !Number.isFinite(numeric)) {
+    return '0.00';
+  }
+  return numeric.toFixed(2);
+};
+
+const escapeCsvValue = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  const stringValue = String(value);
+  if (stringValue.includes('"') || stringValue.includes(',') || stringValue.includes('\n')) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+};
+
+const buildFilename = ({ startDate, endDate }) => {
+  const base = 'zantra-gst-paid-invoices';
+  const start = startDate ? formatDateForCsv(startDate) : '';
+  const end = endDate ? formatDateForCsv(endDate) : '';
+  if (start && end) {
+    return `${base}-${start}-to-${end}.csv`;
+  }
+  if (start) {
+    return `${base}-from-${start}.csv`;
+  }
+  if (end) {
+    return `${base}-until-${end}.csv`;
+  }
+  const now = new Date();
+  return `${base}-${now.toISOString().slice(0, 10)}.csv`;
+};
+
+const downloadCsv = (filename, csv) => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.setAttribute('download', filename);
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+};
+
+const normalizeDateFilters = (options = {}) => {
+  const startDate = sanitizeDateBoundary(options.startDate, 'start');
+  const endDate = sanitizeDateBoundary(options.endDate, 'end');
+
+  if (startDate && endDate && startDate.getTime() > endDate.getTime()) {
+    throw new Error('Start date cannot be later than end date.');
+  }
+
+  return { startDate, endDate };
+};
+
+const collectPaidInvoiceRows = ({ startDate, endDate }) =>
+  InvoiceManager.list()
+    .filter((invoice) => invoice.status === 'paid')
+    .map((invoice) => {
+      const paidTimestamp = resolveTimestamp(invoice.paidAt) ?? resolveTimestamp(invoice.issueDate);
+      return {
+        paidTimestamp,
+        data: {
+          invoiceNumber: invoice.number,
+          issueDate: formatDateForCsv(invoice.issueDate),
+          paidDate: formatDateForCsv(invoice.paidAt),
+          clientName: invoice.clientName,
+          clientBusinessName: invoice.clientBusinessName,
+          subtotal: formatCurrencyValue(invoice.subtotal),
+          gstTotal: formatCurrencyValue(invoice.gstTotal),
+          invoiceTotal: formatCurrencyValue(invoice.total),
+          amountPaid: formatCurrencyValue(invoice.amountPaid ?? invoice.total ?? 0)
+        }
+      };
+    })
+    .filter((entry) => {
+      if (!entry.paidTimestamp) {
+        return true;
+      }
+      if (startDate && entry.paidTimestamp < startDate.getTime()) {
+        return false;
+      }
+      if (endDate && entry.paidTimestamp > endDate.getTime()) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.paidTimestamp && b.paidTimestamp) {
+        return a.paidTimestamp - b.paidTimestamp;
+      }
+      if (a.paidTimestamp) {
+        return -1;
+      }
+      if (b.paidTimestamp) {
+        return 1;
+      }
+      return 0;
+    })
+    .map((entry) => entry.data);
+
+const buildCsvFromRows = (rows) => {
+  const header = CSV_COLUMNS.map((column) => escapeCsvValue(column.label)).join(',');
+  const lines = rows.map((row) =>
+    CSV_COLUMNS.map((column) => escapeCsvValue(row[column.key] ?? '')).join(',')
+  );
+  return [header, ...lines].join('\r\n');
+};
 
 export class ExportManager {
-  static downloadGstCsv(range = {}) {
-    const normalizedRange = ExportManager.#normalizeRange(range);
-    const invoices = InvoiceManager.list();
-
-    const filteredInvoices = invoices.filter((invoice) => {
-      const issueTimestamp = ExportManager.#parseInvoiceDate(invoice.issueDate);
-      if (issueTimestamp === null) {
-        return false;
-      }
-
-      if (issueTimestamp < normalizedRange.startTimestamp || issueTimestamp > normalizedRange.endTimestamp) {
-        return false;
-      }
-
-      if (normalizedRange.statuses && !normalizedRange.statuses.has(invoice.status)) {
-        return false;
-      }
-
-      return true;
-    });
-
-    if (!filteredInvoices.length) {
-      throw new Error('No invoices match the selected filters for export.');
-    }
-
-    const rows = [CSV_HEADERS, ...filteredInvoices.map((invoice) => ExportManager.#mapInvoiceToRow(invoice))];
-    const csv = ExportManager.#rowsToCsv(rows);
-    const filename = ExportManager.#buildFilename(normalizedRange.startDate, normalizedRange.endDate);
-
-    const result = {
-      csv,
-      filename,
-      rowCount: rows.length - 1,
-      filters: {
-        startDate: normalizedRange.startDate.toISOString(),
-        endDate: normalizedRange.endDate.toISOString(),
-        statuses: normalizedRange.statuses ? Array.from(normalizedRange.statuses) : []
-      }
-    };
-
-    if (typeof document === 'undefined' || typeof Blob === 'undefined') {
-      return result;
-    }
-
-    const urlApi = ExportManager.#getUrlApi();
-    if (!urlApi?.createObjectURL) {
-      return result;
-    }
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const objectUrl = urlApi.createObjectURL(blob);
-
-    try {
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = filename;
-      link.rel = 'noopener';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } finally {
-      setTimeout(() => {
-        try {
-          urlApi.revokeObjectURL(objectUrl);
-        } catch (revokeError) {
-          console.warn('ExportManager: failed to revoke object URL.', revokeError);
-        }
-      }, 1000);
-    }
-
-    return result;
+  static getPaidInvoiceRows(options = {}) {
+    const filters = normalizeDateFilters(options);
+    return collectPaidInvoiceRows(filters);
   }
 
-  static #normalizeRange(range) {
-    const startInput = range?.startDate ?? range?.start ?? range?.from;
-    const endInput = range?.endDate ?? range?.end ?? range?.to;
+  static buildPaidInvoiceCsv(options = {}) {
+    const filters = normalizeDateFilters(options);
+    const rows = collectPaidInvoiceRows(filters);
+    if (!rows.length) {
+      throw new Error('No paid invoices were found for the selected criteria.');
+    }
+    return buildCsvFromRows(rows);
+  }
 
-    const startTimestamp = ExportManager.#parseInputDate(startInput, { endOfDay: false });
-    const endTimestamp = ExportManager.#parseInputDate(endInput, { endOfDay: true });
-
-    if (startTimestamp === null || endTimestamp === null) {
-      throw new Error('Export range must include both a valid start and end date.');
+  static downloadPaidInvoicesCsv(options = {}) {
+    const filters = normalizeDateFilters(options);
+    const rows = collectPaidInvoiceRows(filters);
+    if (!rows.length) {
+      throw new Error('No paid invoices were found for the selected criteria.');
     }
 
-    if (startTimestamp > endTimestamp) {
-      throw new Error('Export start date must be on or before the end date.');
-    }
-
-    const statuses = ExportManager.#normalizeStatuses(range?.status);
-
+    const csv = buildCsvFromRows(rows);
+    const filename = buildFilename(filters);
+    downloadCsv(filename, csv);
     return {
-      startTimestamp,
-      endTimestamp,
-      startDate: new Date(startTimestamp),
-      endDate: new Date(endTimestamp),
-      statuses
+      filename,
+      csv,
+      rowCount: rows.length
     };
-  }
-
-  static #normalizeStatuses(input) {
-    if (!input) {
-      return null;
-    }
-
-    const values = Array.isArray(input) ? input : [input];
-    const normalized = values
-      .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : ''))
-      .filter((value) => STATUS_WHITELIST.has(value));
-
-    if (!normalized.length || normalized.length === STATUS_WHITELIST.size) {
-      return null;
-    }
-
-    return new Set(normalized);
-  }
-
-  static #parseInputDate(value, { endOfDay }) {
-    if (value instanceof Date && !Number.isNaN(value.getTime())) {
-      const cloned = new Date(value.getTime());
-      if (!ExportManager.#hasTimeComponent(value)) {
-        ExportManager.#applyBoundary(cloned, endOfDay);
-      }
-      return cloned.getTime();
-    }
-
-    if (typeof value !== 'string') {
-      return null;
-    }
-
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    const timestamp = Date.parse(trimmed);
-    if (Number.isNaN(timestamp)) {
-      return null;
-    }
-
-    const date = new Date(timestamp);
-    if (!ExportManager.#hasTimeComponent(trimmed)) {
-      ExportManager.#applyBoundary(date, endOfDay);
-    }
-    return date.getTime();
-  }
-
-  static #parseInvoiceDate(value) {
-    if (!value) {
-      return null;
-    }
-    const timestamp = Date.parse(value);
-    if (Number.isNaN(timestamp)) {
-      return null;
-    }
-    return timestamp;
-  }
-
-  static #applyBoundary(date, endOfDay) {
-    if (endOfDay) {
-      date.setHours(23, 59, 59, 999);
-    } else {
-      date.setHours(0, 0, 0, 0);
-    }
-  }
-
-  static #hasTimeComponent(value) {
-    if (value instanceof Date) {
-      return (
-        value.getHours() !== 0 ||
-        value.getMinutes() !== 0 ||
-        value.getSeconds() !== 0 ||
-        value.getMilliseconds() !== 0
-      );
-    }
-    return typeof value === 'string' && value.includes('T');
-  }
-
-  static #mapInvoiceToRow(invoice) {
-    return [
-      ExportManager.#escapeCsv(invoice.number),
-      ExportManager.#formatIsoDate(invoice.issueDate),
-      ExportManager.#formatIsoDate(invoice.dueDate),
-      ExportManager.#escapeCsv(invoice.clientName),
-      ExportManager.#escapeCsv(invoice.clientBusinessName),
-      ExportManager.#escapeCsv(ExportManager.#formatStatus(invoice.status)),
-      ExportManager.#formatCurrency(invoice.subtotal),
-      ExportManager.#formatCurrency(invoice.gstTotal),
-      ExportManager.#formatCurrency(invoice.total),
-      ExportManager.#formatCurrency(invoice.amountPaid),
-      ExportManager.#formatCurrency(invoice.balanceDue)
-    ];
-  }
-
-  static #formatIsoDate(value) {
-    if (!value) {
-      return '';
-    }
-    const timestamp = Date.parse(value);
-    if (Number.isNaN(timestamp)) {
-      return '';
-    }
-    const date = new Date(timestamp);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  static #formatStatus(value) {
-    if (typeof value !== 'string') {
-      return '';
-    }
-    const normalized = value.trim().toLowerCase();
-    switch (normalized) {
-      case 'paid':
-        return 'Paid';
-      case 'partial':
-        return 'Partially Paid';
-      case 'unpaid':
-        return 'Unpaid';
-      default:
-        return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : '';
-    }
-  }
-
-  static #formatCurrency(value) {
-    const numeric = Number.parseFloat(value);
-    if (Number.isNaN(numeric) || !Number.isFinite(numeric)) {
-      return '0.00';
-    }
-    return numeric.toFixed(2);
-  }
-
-  static #escapeCsv(value) {
-    if (value === null || value === undefined) {
-      return '';
-    }
-    const stringValue = String(value);
-    if (/[",\n]/.test(stringValue)) {
-      return `"${stringValue.replace(/"/g, '""')}"`;
-    }
-    return stringValue;
-  }
-
-  static #rowsToCsv(rows) {
-    return rows.map((row) => row.join(',')).join('\n');
-  }
-
-  static #buildFilename(startDate, endDate) {
-    const start = ExportManager.#formatForFilename(startDate);
-    const end = ExportManager.#formatForFilename(endDate);
-    return `gst-export-${start}-to-${end}.csv`;
-  }
-
-  static #formatForFilename(date) {
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-      return 'unknown';
-    }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}${month}${day}`;
-  }
-
-  static #getUrlApi() {
-    if (typeof window !== 'undefined' && window.URL) {
-      return window.URL;
-    }
-    if (typeof globalThis !== 'undefined' && globalThis.URL) {
-      return globalThis.URL;
-    }
-    return null;
   }
 }
