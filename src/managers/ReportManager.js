@@ -2,6 +2,7 @@ import { DataManager } from '../data/DataManager.js';
 import { InvoiceManager } from './InvoiceManager.js';
 import { QuoteManager } from './QuoteManager.js';
 import { PaymentManager } from './PaymentManager.js';
+import { RecurringInvoiceManager } from './RecurringInvoiceManager.js';
 
 const withTwoDecimals = (value) => Math.round(value * 100) / 100;
 
@@ -32,11 +33,27 @@ export class ReportManager {
   static getDashboardMetrics() {
     const invoices = InvoiceManager.list();
     const quotes = QuoteManager.list();
+    const schedules = RecurringInvoiceManager.list();
     const outstandingInvoices = invoices.filter(
       (invoice) => (invoice.balanceDue ?? invoice.total) > 0
     );
     const activeQuotes = quotes.filter((quote) => quote.status !== 'declined');
     const payments = PaymentManager.list();
+    const now = new Date();
+    const upcomingSchedules = schedules.filter((schedule) => {
+      const days = RecurringInvoiceManager.daysUntilNextRun(schedule, now);
+      return typeof days === 'number' && days >= 0 && days <= 7;
+    });
+    const materialReorders = schedules.filter((schedule) => {
+      if (!schedule.requiresMaterials) {
+        return false;
+      }
+      const days = RecurringInvoiceManager.daysUntilNextRun(schedule, now);
+      return typeof days === 'number' && days >= 0 && days <= 14;
+    });
+    const pendingReminders = schedules.filter((schedule) =>
+      RecurringInvoiceManager.needsReminder(schedule, now)
+    );
 
     const openJobs = outstandingInvoices.length + activeQuotes.length;
     const invoicesDueAmount = withTwoDecimals(
@@ -53,7 +70,14 @@ export class ReportManager {
       averagePaymentTime,
       totalInvoices: invoices.length,
       totalQuotes: quotes.length,
-      totalPayments: payments.length
+      totalPayments: payments.length,
+      recurringScheduleCount: schedules.length,
+      upcomingAppointments: upcomingSchedules.length,
+      materialReorders: materialReorders.length,
+      reminderQueue: pendingReminders.length,
+      recurringProjectedValue: withTwoDecimals(
+        schedules.reduce((sum, schedule) => sum + (schedule.total ?? 0), 0)
+      )
     };
   }
 
