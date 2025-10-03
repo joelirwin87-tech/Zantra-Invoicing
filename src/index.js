@@ -38,6 +38,42 @@ const formatDate = (value) => {
   return new Date(timestamp).toLocaleDateString();
 };
 
+const toStartOfDay = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
+const differenceInDays = (target, reference = new Date()) => {
+  const targetDate = toStartOfDay(target);
+  const referenceDate = toStartOfDay(reference);
+  if (!targetDate || !referenceDate) {
+    return null;
+  }
+  const diffMs = targetDate.getTime() - referenceDate.getTime();
+  return Math.round(diffMs / (24 * 60 * 60 * 1000));
+};
+
+const formatRelativeDate = (value) => {
+  const diff = differenceInDays(value, new Date());
+  if (diff === null) {
+    return '';
+  }
+  if (diff === 0) {
+    return 'today';
+  }
+  if (diff > 0) {
+    return `in ${diff} day${diff === 1 ? '' : 's'}`;
+  }
+  const abs = Math.abs(diff);
+  return `${abs} day${abs === 1 ? '' : 's'} ago`;
+};
+
 const parseNumberInput = (input) => {
   if (!input) {
     return 0;
@@ -319,6 +355,7 @@ class ZantraApp {
     this.sectionInvoiceButtons = Array.from(document.querySelectorAll('[data-action="open-invoice-form"]'));
     this.newRecurringButton = document.querySelector('[data-action="open-recurring-form"]');
     this.newQuoteButton = document.querySelector('[data-action="open-quote-form"]');
+    this.recurringFormButtons = Array.from(document.querySelectorAll('[data-action="open-recurring-form"]'));
 
     this.dashboardMetrics = {
       openJobs: document.querySelector('[data-dashboard-value="openJobs"]'),
@@ -382,6 +419,14 @@ class ZantraApp {
       });
     } else {
       this.recurringFormEditor = null;
+    }
+
+    if (this.recurringForm) {
+      this.recurringFormEditor = new LineItemEditor(this.recurringForm, {
+        onTotalsChange: (items) => this.updateRecurringTotals(items),
+        services: this.state.services,
+        gstRate: this.state.settings.gstRate
+      });
     }
 
     if (this.quoteListBody) {
@@ -478,6 +523,15 @@ class ZantraApp {
         event.preventDefault();
         this.activateSection('invoices');
         this.toggleInvoiceForm(true);
+      });
+    }
+    if (this.recurringFormButtons?.length) {
+      this.recurringFormButtons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          this.activateSection('invoices');
+          this.toggleRecurringForm(true);
+        });
       });
     }
     if (this.sectionInvoiceButtons.length) {
